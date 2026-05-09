@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Domus · Find your home</title>
+    <link rel="stylesheet" href="./style.css" />
+    <style>
+        .hero { padding: 56px 0 32px; text-align: center; }
+        .hero h1 { font-size: 38px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 12px; }
+        .hero p { color: var(--text-2); font-size: 16px; margin: 0 0 28px; }
+        .search-bar { max-width: 640px; margin: 0 auto; display: flex; align-items: center; background: white; border: 1px solid var(--border-strong); border-radius: var(--radius-chip); padding: 6px 6px 6px 22px; box-shadow: var(--shadow-sm); }
+        .search-bar input { flex: 1; border: 0; outline: 0; font-size: 15px; font-family: inherit; padding: 12px 0; background: transparent; }
+        .search-bar button { padding: 12px 22px; }
+        .result-count { color: var(--text-2); font-size: 14px; margin: 0 0 16px; }
+    </style>
+</head>
+<body>
+    <nav class="topnav" id="topnav"></nav>
+    <section class="hero container">
+        <h1>Don't just look at homes. <span style="color: var(--accent);">Walk through them.</span></h1>
+        <p>Every Domus listing tagged ★ 3D Tour is a real photoreal capture you can explore on your own — pan, zoom, walk every room. Buying decisions get easier when the photos can lie but the geometry can't.</p>
+        <form class="search-bar" onsubmit="event.preventDefault()">
+            <input type="search" placeholder="Austin, TX · neighborhood · ZIP" id="hero-q" />
+            <button class="btn btn-primary" type="submit">Search</button>
+        </form>
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 18px;"><span style="color: var(--accent)">★</span> 1 home with full 3D tour · all 12 listings clickable</p>
+    </section>
+    <main class="container">
+        <p class="result-count" id="result-count">12 homes for sale in Austin, TX</p>
+        <div class="grid-listings" id="grid"></div>
+    </main>
+    <div class="spacer"></div>
+    <footer class="foot" id="foot"></footer>
+    <script type="module">
+        import { LISTINGS } from './data/listings.js';
+        import { buildCard } from './lib/card.js';
+        import { mountNav, mountFooter } from './lib/nav.js';
+
+        mountNav('index');
+        mountFooter();
+
+        const grid = document.getElementById('grid');
+        for (const l of LISTINGS) grid.appendChild(buildCard(l));
+    </script>
+</body>
+</html>
