@@ -12,7 +12,15 @@
         .search-bar { max-width: 640px; margin: 0 auto; display: flex; align-items: center; background: white; border: 1px solid var(--border-strong); border-radius: var(--radius-chip); padding: 6px 6px 6px 22px; box-shadow: var(--shadow-sm); }
         .search-bar input { flex: 1; border: 0; outline: 0; font-size: 15px; font-family: inherit; padding: 12px 0; background: transparent; }
         .search-bar button { padding: 12px 22px; }
-        .result-count { color: var(--text-2); font-size: 14px; margin: 0 0 16px; }
+        .result-count { color: var(--text-2); font-size: 14px; margin: 0; }
+        .filters-bar { position: sticky; top: 65px; z-index: 20; background: rgba(255,255,255,0.94); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); padding: 14px 0; margin-bottom: 24px; }
+        .filters-row { display: flex; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: thin; }
+        .filters-row .divider { width: 1px; height: 22px; background: var(--border); }
+        .filters-row #price-range { -webkit-appearance: none; width: 140px; height: 4px; background: var(--border-strong); border-radius: 2px; outline: none; }
+        .filters-row #price-range::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); cursor: pointer; }
+        .filters-row .label-tiny { font-size: 11px; letter-spacing: 0.06em; color: var(--text-muted); text-transform: uppercase; margin-right: 6px; }
+        .filters-row #price-display { font-size: 13px; font-weight: 600; color: var(--text); min-width: 96px; }
+        .filters-row #sort-select { font-family: inherit; padding-right: 28px; }
     </style>
 </head>
 <body>
@@ -26,8 +34,34 @@
         </form>
         <p style="font-size: 12px; color: var(--text-muted); margin-top: 18px;"><span style="color: var(--accent)">★</span> 1 home with full 3D tour · all 12 listings clickable</p>
     </section>
+    <section class="filters-bar container">
+        <div class="filters-row" id="filters-row">
+            <span class="label-tiny">Price</span>
+            <span id="price-display">Up to $5M</span>
+            <input type="range" id="price-range" min="0" max="5000000" step="50000" value="5000000" />
+            <button class="chip" data-bedchip="0">Any beds</button>
+            <button class="chip" data-bedchip="1">1+</button>
+            <button class="chip" data-bedchip="2">2+</button>
+            <button class="chip" data-bedchip="3">3+</button>
+            <button class="chip" data-bedchip="4">4+</button>
+            <span class="divider"></span>
+            <button class="chip" data-typechip="any">Any type</button>
+            <button class="chip" data-typechip="house">House</button>
+            <button class="chip" data-typechip="townhouse">Townhouse</button>
+            <button class="chip" data-typechip="condo">Condo</button>
+            <span class="divider"></span>
+            <button class="chip" id="tour3d-chip">★ 3D tour only</button>
+            <select id="sort-select" class="chip" style="border-radius:var(--radius-chip)">
+                <option value="newest">Newest</option>
+                <option value="priceAsc">Price: low to high</option>
+                <option value="priceDesc">Price: high to low</option>
+            </select>
+        </div>
+    </section>
     <main class="container">
-        <p class="result-count" id="result-count">12 homes for sale in Austin, TX</p>
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom: 16px;">
+            <p class="result-count" id="result-count">12 homes for sale in Austin, TX</p>
+        </div>
         <div class="grid-listings" id="grid"></div>
     </main>
     <div class="spacer"></div>
@@ -36,12 +70,42 @@
         import { LISTINGS } from './data/listings.js';
         import { buildCard } from './lib/card.js';
         import { mountNav, mountFooter } from './lib/nav.js';
+        import { readFilters, writeFilters, applyFilters } from './lib/filters.js';
+        import { fmtPrice } from './lib/format.js';
 
-        mountNav('index');
-        mountFooter();
+        mountNav('index'); mountFooter();
+        const filters = readFilters();
 
         const grid = document.getElementById('grid');
-        for (const l of LISTINGS) grid.appendChild(buildCard(l));
+        const resultCount = document.getElementById('result-count');
+        const priceRange = document.getElementById('price-range');
+        const priceDisplay = document.getElementById('price-display');
+        const sortSelect = document.getElementById('sort-select');
+        const tour3dChip = document.getElementById('tour3d-chip');
+
+        const render = () => {
+            const visible = applyFilters(LISTINGS, filters);
+            grid.replaceChildren();
+            for (const l of visible) grid.appendChild(buildCard(l));
+            resultCount.textContent = visible.length + ' homes for sale in Austin, TX';
+            for (const b of document.querySelectorAll('[data-bedchip]')) b.classList.toggle('active', Number(b.dataset.bedchip) === filters.beds);
+            for (const b of document.querySelectorAll('[data-typechip]')) b.classList.toggle('active', b.dataset.typechip === filters.type);
+            tour3dChip.classList.toggle('active', filters.tour3d);
+            priceRange.value = filters.priceMax;
+            priceDisplay.textContent = filters.priceMax >= 5_000_000 ? 'Up to $5M' : 'Up to ' + fmtPrice(filters.priceMax);
+            sortSelect.value = filters.sort;
+        };
+        render();
+
+        priceRange.addEventListener('input', () => {
+            filters.priceMax = Number(priceRange.value);
+            priceDisplay.textContent = filters.priceMax >= 5_000_000 ? 'Up to $5M' : 'Up to ' + fmtPrice(filters.priceMax);
+        });
+        priceRange.addEventListener('change', () => { writeFilters(filters); render(); });
+        for (const b of document.querySelectorAll('[data-bedchip]')) b.addEventListener('click', () => { filters.beds = Number(b.dataset.bedchip); writeFilters(filters); render(); });
+        for (const b of document.querySelectorAll('[data-typechip]')) b.addEventListener('click', () => { filters.type = b.dataset.typechip; writeFilters(filters); render(); });
+        tour3dChip.addEventListener('click', () => { filters.tour3d = !filters.tour3d; writeFilters(filters); render(); });
+        sortSelect.addEventListener('change', () => { filters.sort = sortSelect.value; writeFilters(filters); render(); });
     </script>
 </body>
 </html>
