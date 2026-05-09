@@ -127,8 +127,9 @@
             // 3. View 3D tour CTA (only if listing has tour3d)
             if (l.tour3d) {
                 const cta = el('button', { cls: 'tour-hero-cta', text: 'View 3D tour', attrs: { id: 'tour-cta', type: 'button' } });
-                cta.addEventListener('click', () => {
-                    alert('3D tour modal — coming next task');
+                cta.addEventListener('click', async () => {
+                    const { openTour } = await import('./lib/tour/modal.js');
+                    await openTour(l);
                 });
                 content.appendChild(cta);
             }
