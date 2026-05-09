@@ -132,7 +132,7 @@
                 c.addEventListener('mouseleave', () => highlightMarker(null));
                 grid.appendChild(c);
             }
-            resultCount.textContent = visible.length + ' homes for sale in Austin, TX';
+            resultCount.textContent = visible.length + (visible.length === 1 ? ' home' : ' homes') + ' for sale in Austin, TX';
             for (const b of document.querySelectorAll('[data-bedchip]')) b.classList.toggle('active', Number(b.dataset.bedchip) === filters.beds);
             for (const b of document.querySelectorAll('[data-typechip]')) b.classList.toggle('active', b.dataset.typechip === filters.type);
             tour3dChip.classList.toggle('active', filters.tour3d);
