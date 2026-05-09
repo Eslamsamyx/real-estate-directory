@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Example Runner · PlayCanvas</title>
+    <style>
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background: #05060a;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased; color: #e8eaf2;
+        }
+        canvas#application-canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            touch-action: none;
+            outline: none;
+        }
+        .topbar {
+            position: fixed; top: 0; left: 0; right: 0;
+            z-index: 50;
+            display: flex; align-items: center; gap: 14px;
+            padding: 12px 18px;
+            background: linear-gradient(180deg, rgba(5,6,10,0.9), rgba(5,6,10,0.4) 70%, transparent);
+            color: #fff;
+            pointer-events: none;
+        }
+        .topbar a, .topbar button {
+            pointer-events: auto;
+            font-size: 10.5px; letter-spacing: 0.32em; text-transform: uppercase;
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            padding: 7px 12px;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 999px;
+            background: rgba(15,18,26,0.55);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .topbar a:hover, .topbar button:hover {
+            color: #fff;
+            border-color: rgba(255,255,255,0.28);
+        }
+        .topbar .meta {
+            margin-left: auto;
+            font-size: 10.5px; letter-spacing: 0.28em; text-transform: uppercase;
+            color: rgba(255,255,255,0.55);
+            font-variant-numeric: tabular-nums;
+        }
+        .topbar .meta b {
+            color: rgba(180, 220, 255, 1);
+            font-weight: 400;
+            margin-right: 8px;
+        }
+
+        .splash {
+            position: fixed; inset: 0;
+            background: #05060a;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 18px; z-index: 100;
+            transition: opacity 600ms ease 200ms, visibility 0s linear 800ms;
+        }
+        .splash.hidden { opacity: 0; visibility: hidden; }
+        .spinner {
+            width: 30px; height: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-top-color: rgba(180, 220, 255, 0.9);
+            border-radius: 50%; animation: spin 0.9s linear infinite;
+        }
+        .splash-label { font-size: 10.5px; letter-spacing: 0.45em; color: rgba(255,255,255,0.4); text-transform: uppercase; text-align: center; max-width: 80vw; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .error {
+            position: fixed; inset: 0; z-index: 200;
+            display: none; align-items: center; justify-content: center;
+            background: rgba(5,6,10,0.92);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            padding: 24px;
+        }
+        .error.show { display: flex; }
+        .error-card {
+            max-width: 600px;
+            padding: 28px 32px;
+            border: 1px solid rgba(255,80,80,0.25);
+            border-radius: 14px;
+            background: rgba(15,18,26,0.85);
+        }
+        .error-card h3 {
+            margin: 0 0 10px;
+            font-size: 13px; letter-spacing: 0.28em; text-transform: uppercase;
+            color: rgba(255,140,140,1);
+            font-weight: 400;
+        }
+        .error-card p {
+            margin: 0 0 14px; font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.5;
+        }
+        .error-card pre {
+            margin: 0 0 16px;
+            font-size: 11.5px;
+            font-family: ui-monospace, "SF Mono", Menlo, monospace;
+            color: rgba(255,200,200,0.8);
+            background: rgba(0,0,0,0.4);
+            padding: 12px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 240px;
+            overflow: auto;
+        }
+        .error-card .actions { display: flex; gap: 10px; }
+
+        @media (max-width: 600px) {
+            .topbar { padding: 10px 12px; gap: 10px; }
+            .topbar .meta { display: none; }
+        }
+    </style>
+    <script type="importmap">
+    {
+        "imports": {
+            "playcanvas": "/demo/vendor/playcanvas.mjs",
+            "examples/utils": "/demo/lib/example-shims/utils.mjs",
+            "examples/observer": "/demo/lib/example-shims/observer.mjs",
+            "examples/files": "/demo/lib/example-shims/files.mjs"
+        }
+    }
+    </script>
+</head>
+<body>
+    <canvas id="application-canvas"></canvas>
+
+    <div class="topbar">
+        <a href="./examples.html">← BROWSER</a>
+        <a id="source-link" href="#" target="_blank" rel="noopener">SOURCE</a>
+        <a id="live-link" href="#" target="_blank" rel="noopener">LIVE</a>
+        <span class="meta"><b id="cat">…</b><span id="slug">…</span></span>
+    </div>
+
+    <div class="splash" id="splash">
+        <div class="spinner"></div>
+        <div class="splash-label" id="splash-label">Loading example…</div>
+    </div>
+
+    <div class="error" id="error">
+        <div class="error-card">
+            <h3>Example failed to run locally</h3>
+            <p>Some engine examples need build-only assets, deferred imports, or live UI controls
+            that aren't available in this lightweight runner. You can still view it on the live site.</p>
+            <pre id="error-msg"></pre>
+            <div class="actions">
+                <a class="action" id="error-live" href="#" target="_blank" rel="noopener">Open live</a>
+                <a class="action" id="error-source" href="#" target="_blank" rel="noopener">View source</a>
+                <a class="action" href="./examples.html">Back to browser</a>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Make `pc` available globally so legacy `pc.createScript` files
+        // (loaded via the asset registry as type 'script') can find it.
+        import * as pc from 'playcanvas';
+        window.pc = pc;
+
+        const params = new URLSearchParams(location.search);
+        const example = params.get('example'); // "category/slug"
+
+        const splash = document.getElementById('splash');
+        const splashLabel = document.getElementById('splash-label');
+        const error = document.getElementById('error');
+        const errorMsg = document.getElementById('error-msg');
+
+        if (!example || !example.includes('/')) {
+            splashLabel.textContent = 'No example specified — append ?example=category/slug';
+        } else {
+            const [category, slug] = example.split('/');
+            const sourceUrl = '/engine/examples/src/examples/' + category + '/' + slug + '.example.mjs';
+            const liveUrl = 'https://playcanvas.vercel.app/#/' + category + '/' + slug;
+
+            document.getElementById('cat').textContent = category;
+            document.getElementById('slug').textContent = slug.replace(/-/g, ' ');
+            document.getElementById('source-link').href = sourceUrl;
+            document.getElementById('live-link').href = liveUrl;
+            document.getElementById('error-live').href = liveUrl;
+            document.getElementById('error-source').href = sourceUrl;
+            document.title = slug.replace(/-/g, ' ') + ' · ' + category + ' · PlayCanvas';
+            splashLabel.textContent = 'Loading ' + category + ' / ' + slug.replace(/-/g, ' ') + '…';
+
+            window.addEventListener('error', (e) => {
+                showError((e.error && (e.error.stack || e.error.message)) || e.message || 'Unknown error');
+            });
+            window.addEventListener('unhandledrejection', (e) => {
+                const r = e.reason;
+                showError((r && (r.stack || r.message)) || String(r) || 'Unhandled rejection');
+            });
+
+            try {
+                await import(sourceUrl);
+                requestAnimationFrame(() => splash.classList.add('hidden'));
+            } catch (err) {
+                showError((err && (err.stack || err.message)) || String(err));
+            }
+        }
+
+        function showError(msg) {
+            splash.classList.add('hidden');
+            errorMsg.textContent = msg;
+            error.classList.add('show');
+            console.error('[example-runner]', msg);
+        }
+    </script>
+</body>
+</html>

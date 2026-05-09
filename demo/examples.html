@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Examples Browser · PlayCanvas Workspace</title>
+    <style>
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0;
+            min-height: 100vh;
+            background:
+                radial-gradient(ellipse 80% 60% at 30% -10%, rgba(120, 180, 255, 0.06), transparent 60%),
+                radial-gradient(ellipse 70% 50% at 80% 110%, rgba(255, 140, 200, 0.04), transparent 60%),
+                #07080c;
+            color: #e8eaf2;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            line-height: 1.5;
+        }
+
+        a { color: rgba(180, 220, 255, 1); text-decoration: none; }
+        a:hover { color: rgba(220, 235, 255, 1); }
+        code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em; }
+
+        .page { max-width: 1320px; margin: 0 auto; padding: 56px 32px 100px; }
+
+        .header { margin-bottom: 32px; }
+        .breadcrumb {
+            font-size: 11px; font-weight: 600; letter-spacing: 0.4em;
+            color: rgba(255,255,255,0.45); text-transform: uppercase; margin: 0 0 12px;
+        }
+        .breadcrumb a { color: rgba(180, 220, 255, 0.85); }
+        h1 { font-size: clamp(30px, 4vw, 44px); font-weight: 200; letter-spacing: 0.05em; margin: 0 0 12px; line-height: 1.1; }
+        h1 b {
+            font-weight: 400;
+            background: linear-gradient(90deg, #b4dcff 0%, #ffb4dc 100%);
+            -webkit-background-clip: text; background-clip: text; color: transparent;
+        }
+        .lede { max-width: 720px; font-size: 14px; color: rgba(255,255,255,0.6); margin: 0 0 28px; }
+
+        .toolbar {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+            padding: 14px; margin-bottom: 24px;
+            border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;
+            background: rgba(15,18,26,0.55);
+            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            position: sticky; top: 12px; z-index: 5;
+        }
+        .toolbar input[type="search"] {
+            flex: 1 1 240px; min-width: 240px;
+            padding: 10px 14px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(0,0,0,0.25); border-radius: 10px;
+            color: rgba(255,255,255,0.95); font-size: 13.5px; outline: none;
+            font-family: inherit;
+        }
+        .toolbar input[type="search"]:focus { border-color: rgba(180, 220, 255, 0.5); }
+        .counter {
+            font-size: 10.5px; letter-spacing: 0.32em;
+            color: rgba(255,255,255,0.45); text-transform: uppercase;
+            font-variant-numeric: tabular-nums; margin-left: auto;
+        }
+        .counter b { color: rgba(180, 220, 255, 1); font-weight: 400; }
+
+        .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 28px; }
+        .chip {
+            font-size: 10.5px; letter-spacing: 0.16em;
+            text-transform: uppercase; padding: 7px 12px; border-radius: 999px;
+            background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.65);
+            border: 1px solid rgba(255,255,255,0.06);
+            cursor: pointer; user-select: none;
+            transition: background 180ms, color 180ms, border-color 180ms;
+            font-family: inherit;
+        }
+        .chip:hover { color: rgba(255,255,255,0.95); border-color: rgba(255,255,255,0.18); }
+        .chip.active {
+            background: rgba(180,220,255,0.10);
+            border-color: rgba(180,220,255,0.4);
+            color: rgba(180,220,255,1);
+        }
+        .chip .n { opacity: 0.55; margin-left: 6px; }
+        .chip-spacer { width: 1px; height: 18px; background: rgba(255,255,255,0.1); margin: 0 6px; align-self: center; }
+
+        .section-head {
+            display: flex; justify-content: space-between; align-items: baseline;
+            margin: 36px 0 14px; padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .section-head h2 {
+            font-size: 13px; font-weight: 400; letter-spacing: 0.4em;
+            color: rgba(255,255,255,0.85); text-transform: uppercase; margin: 0;
+        }
+        .section-head .count {
+            font-size: 10.5px; letter-spacing: 0.32em;
+            color: rgba(255,255,255,0.4); text-transform: uppercase;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-bottom: 8px; }
+
+        .card {
+            display: flex; flex-direction: column;
+            padding: 16px 18px 14px;
+            border: 1px solid rgba(255,255,255,0.06); border-radius: 12px;
+            background: rgba(15, 18, 26, 0.5);
+            transition: border-color 200ms, transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 220ms;
+        }
+        .card:hover {
+            border-color: rgba(255,255,255,0.16);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+        }
+        .card .row1 { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+        .card .cat { font-size: 9px; letter-spacing: 0.32em; color: rgba(180,220,255,0.85); text-transform: uppercase; }
+        .card .featured {
+            font-size: 8.5px; letter-spacing: 0.30em; color: rgba(255,210,160,1);
+            text-transform: uppercase; padding: 2px 7px; border-radius: 4px;
+            border: 1px solid rgba(255,210,160,0.3);
+            background: rgba(255,210,160,0.05);
+        }
+        .card h3 { font-size: 14px; font-weight: 400; letter-spacing: 0.04em; margin: 0 0 6px; color: rgba(255,255,255,0.95); }
+        .card .desc { font-size: 12px; color: rgba(255,255,255,0.50); margin: 0 0 14px; flex: 1; line-height: 1.45; }
+        .card .desc.empty { color: rgba(255,255,255,0.25); font-style: italic; }
+        .card .actions { display: flex; gap: 8px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; }
+        .btn {
+            flex: 1; display: inline-block; text-align: center;
+            font-size: 9.5px; letter-spacing: 0.32em; text-transform: uppercase;
+            padding: 7px 10px; border-radius: 6px; text-decoration: none;
+            border: 1px solid rgba(255,255,255,0.10);
+            color: rgba(255,255,255,0.7); transition: all 180ms;
+        }
+        .btn:hover { color: #fff; border-color: rgba(255,255,255,0.25); }
+        .btn-primary { border-color: rgba(180,220,255,0.4); color: rgba(180,220,255,1); background: rgba(180,220,255,0.05); }
+        .btn-primary:hover { background: rgba(180,220,255,0.12); color: rgba(220,235,255,1); }
+        .btn-runnable { border-color: rgba(160,255,210,0.45); color: rgba(160,255,210,1); background: rgba(160,255,210,0.05); }
+        .btn-runnable:hover { background: rgba(160,255,210,0.12); }
+
+        .empty-state { text-align: center; padding: 48px 20px; color: rgba(255,255,255,0.45); font-size: 13px; }
+
+        .footer {
+            margin-top: 60px; padding-top: 24px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            font-size: 11.5px; color: rgba(255,255,255,0.4);
+            display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+            letter-spacing: 0.1em;
+        }
+
+        @media (max-width: 600px) {
+            .page { padding: 36px 18px 80px; }
+            .toolbar { padding: 10px; }
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <header class="header">
+            <p class="breadcrumb"><a href="./index.html">← Gallery</a> · Examples Browser</p>
+            <h1>Every engine example, <b>indexed</b></h1>
+            <p class="lede">
+                The full official PlayCanvas examples library — <b id="total-count">…</b> demos across <b id="cat-count">…</b> categories,
+                <span style="color: rgba(160,255,210,1)">all runnable locally</span> via the lightweight
+                <a href="./example-runner.html" style="color: rgba(160,255,210,0.85)">example-runner</a>
+                with importmap shims for <code>examples/utils</code>, <code>examples/observer</code>, and <code>examples/files</code>.
+                Source links go to the local engine clone; live links go to
+                <a href="https://playcanvas.vercel.app/" target="_blank" rel="noopener">playcanvas.vercel.app</a> as a fallback for examples that need build-only assets.
+            </p>
+        </header>
+
+        <div class="toolbar">
+            <input id="q" type="search" placeholder="Search by name, description, or category…" autocomplete="off" />
+            <div class="counter"><b id="visible-count">0</b> / <span id="total-count2">0</span> visible</div>
+        </div>
+
+        <div class="chips" id="chips"></div>
+
+        <main id="content"></main>
+
+        <footer class="footer">
+            <span>Engine clone: <code>engine/examples/src/examples/</code></span>
+            <span><a href="https://api.playcanvas.com/engine/" target="_blank" rel="noopener">API reference</a> · <a href="https://developer.playcanvas.com/" target="_blank" rel="noopener">User manual</a></span>
+        </footer>
+    </div>
+
+    <script type="module">
+        import { EXAMPLES } from './examples-data.js';
+
+        // Build a runnable URL for any example via the local example-runner.
+        // The runner sets up importmap shims for `examples/utils`, `examples/observer`,
+        // and `examples/files`, then dynamically imports the example .mjs.
+        // Examples that need build-only assets or live UI controls show an error card
+        // with links to the live site and source.
+        const localRunUrl = (e) => './example-runner.html?example=' + e.category + '/' + e.slug;
+        // Custom local demos that have hand-built standalone wrappers (separate from the runner)
+        const CUSTOM_LOCAL = Object.create(null);
+        // (none yet — Crystal Pavilion etc. are not engine examples)
+
+        // Featured = examples that are particularly well-suited to first-time exploration
+        const FEATURED_LIST = [
+            'graphics/post-processing','graphics/shadow-cascades','graphics/shadow-soft','graphics/sky',
+            'graphics/hdr','graphics/lights-baked','graphics/area-lights','graphics/clustered-lighting',
+            'graphics/particles-snow','graphics/particles-spark','graphics/painter','graphics/portal',
+            'graphics/reflection-planar','graphics/depth-of-field','graphics/ambient-occlusion',
+            'graphics/taa','graphics/mesh-decals','graphics/mesh-morph','graphics/instancing-glb',
+            'graphics/render-asset','graphics/render-pass','graphics/model-outline',
+            'gaussian-splatting/viewer','gaussian-splatting/multi-splat','gaussian-splatting/lod-streaming',
+            'gaussian-splatting/paint','gaussian-splatting/reveal','gaussian-splatting/weather',
+            'gaussian-splatting/world','gaussian-splatting/picking','gaussian-splatting/shadows',
+            'animation/locomotion','animation/blend-trees-2d-cartesian','animation/tween','animation/events',
+            'camera/first-person','camera/fly','camera/orbit',
+            'physics/falling-shapes','physics/raycast','physics/vehicle',
+            'shaders/cloud-shadows','shaders/ground-fog','shaders/shader-toon','shaders/shader-burn',
+            'shaders/trees','shaders/shader-wobble',
+            'materials/clear-coat','materials/lit-material','materials/material-anisotropic',
+            'materials/material-refraction','materials/material-transparency','materials/dispersion',
+            'loaders/glb','loaders/draco-glb',
+            'compute/particles','compute/edge-detect',
+            'misc/animated-sprite','misc/spineboy','misc/multi-app','misc/mini-stats',
+            'user-interface/world-ui','user-interface/text-emojis','user-interface/scroll-view',
+            'sound/positional','gizmos/transform-translate',
+            'xr/vr-basic','xr/ar-basic','xr/xr-hands','xr/vr-movement','xr/ar-hit-test'
+        ];
+        const FEATURED = new Set(FEATURED_LIST);
+
+        const CATEGORY_ORDER = [
+            'graphics','gaussian-splatting','animation','camera','materials','shaders','loaders',
+            'physics','compute','xr','user-interface','misc','gizmos','sound','input',
+            'gaussian-splatting-xr','gaussian-splatting-legacy','test'
+        ];
+
+        const visible = EXAMPLES.filter(e => !e.hidden);
+        const byCategory = Object.create(null);
+        for (const e of visible) (byCategory[e.category] ||= []).push(e);
+
+        document.getElementById('total-count').textContent = String(visible.length);
+        document.getElementById('total-count2').textContent = String(visible.length);
+        document.getElementById('cat-count').textContent = String(Object.keys(byCategory).length);
+
+        // ----- Helpers -----
+        function el(tag, opts) {
+            const e = document.createElement(tag);
+            if (opts && opts.cls) e.className = opts.cls;
+            if (opts && opts.text != null) e.textContent = opts.text;
+            if (opts && opts.attrs) for (const k in opts.attrs) e.setAttribute(k, opts.attrs[k]);
+            if (opts && opts.style) for (const k in opts.style) e.style[k] = opts.style[k];
+            return e;
+        }
+        function appendAll(parent, children) {
+            for (const c of children) if (c) parent.appendChild(c);
+            return parent;
+        }
+        function chipNumberSuffix(n) {
+            const span = el('span', { cls: 'n', text: String(n) });
+            return span;
+        }
+
+        // ----- Filter chips -----
+        const chipBox = document.getElementById('chips');
+        let activeCategory = 'all';
+        let activeFilter = 'all';
+
+        function makeChip(label, key, count, group) {
+            const btn = el('button', { cls: 'chip' + (key === activeCategory ? ' active' : ''), text: label });
+            btn.dataset.key = key;
+            btn.dataset.group = group;
+            btn.appendChild(chipNumberSuffix(count));
+            btn.addEventListener('click', () => {
+                if (group === 'category') activeCategory = key;
+                else activeFilter = key;
+                document.querySelectorAll('.chip[data-group="' + group + '"]').forEach(c => {
+                    c.classList.toggle('active', c.dataset.key === key);
+                });
+                render();
+            });
+            return btn;
+        }
+
+        chipBox.appendChild(makeChip('All', 'all', visible.length, 'filter'));
+        chipBox.appendChild(makeChip('Featured', 'featured', visible.filter(e => FEATURED.has(e.category + '/' + e.slug)).length, 'filter'));
+
+        chipBox.appendChild(el('span', { cls: 'chip-spacer' }));
+
+        chipBox.appendChild(makeChip('All categories', 'all', visible.length, 'category'));
+        const orderedCats = [
+            ...CATEGORY_ORDER.filter(c => byCategory[c]),
+            ...Object.keys(byCategory).filter(c => !CATEGORY_ORDER.includes(c))
+        ];
+        for (const c of orderedCats) {
+            chipBox.appendChild(makeChip(c.replace(/-/g, ' '), c, byCategory[c].length, 'category'));
+        }
+
+        // ----- Search -----
+        const q = document.getElementById('q');
+        let query = '';
+        q.addEventListener('input', () => { query = q.value.toLowerCase().trim(); render(); });
+
+        // ----- Render -----
+        const content = document.getElementById('content');
+        const visibleEl = document.getElementById('visible-count');
+
+        function buildCard(e) {
+            const key = e.category + '/' + e.slug;
+            const isFeat = FEATURED.has(key);
+            const customUrl = CUSTOM_LOCAL[key];
+
+            const card = el('article', { cls: 'card' });
+
+            const row1 = el('div', { cls: 'row1' });
+            row1.appendChild(el('span', { cls: 'cat', text: e.category.replace(/-/g, ' ') }));
+            if (isFeat) row1.appendChild(el('span', { cls: 'featured', text: 'Featured' }));
+            card.appendChild(row1);
+
+            card.appendChild(el('h3', { text: e.title }));
+
+            if (e.description) {
+                card.appendChild(el('p', { cls: 'desc', text: e.description }));
+            } else {
+                card.appendChild(el('p', { cls: 'desc empty', text: 'No description' }));
+            }
+
+            const actions = el('div', { cls: 'actions' });
+            actions.appendChild(el('a', { cls: 'btn btn-runnable', text: 'Run local', attrs: { href: customUrl || localRunUrl(e) } }));
+            actions.appendChild(el('a', { cls: 'btn btn-primary', text: 'Run live', attrs: { href: 'https://playcanvas.vercel.app/#/' + e.category + '/' + e.slug, target: '_blank', rel: 'noopener' } }));
+            actions.appendChild(el('a', { cls: 'btn', text: 'Source', attrs: { href: '../' + e.src, target: '_blank', rel: 'noopener' } }));
+            card.appendChild(actions);
+            return card;
+        }
+
+        function render() {
+            content.replaceChildren();
+            let total = 0;
+            const groups = Object.create(null);
+
+            for (const e of visible) {
+                const key = e.category + '/' + e.slug;
+                const isFeat = FEATURED.has(key);
+                if (activeFilter === 'featured' && !isFeat) continue;
+                if (activeCategory !== 'all' && e.category !== activeCategory) continue;
+                if (query) {
+                    const hay = (e.title + ' ' + e.slug + ' ' + e.description + ' ' + e.category).toLowerCase();
+                    if (!hay.includes(query)) continue;
+                }
+                (groups[e.category] ||= []).push(e);
+                total++;
+            }
+            visibleEl.textContent = String(total);
+
+            if (total === 0) {
+                const empty = el('div', { cls: 'empty-state', text: 'No examples match those filters.' });
+                content.appendChild(empty);
+                return;
+            }
+
+            const ordered = [
+                ...CATEGORY_ORDER.filter(c => groups[c]),
+                ...Object.keys(groups).filter(c => !CATEGORY_ORDER.includes(c))
+            ];
+
+            for (const cat of ordered) {
+                const items = groups[cat];
+
+                const head = el('div', { cls: 'section-head' });
+                head.appendChild(el('h2', { text: cat.replace(/-/g, ' ') }));
+                head.appendChild(el('span', { cls: 'count', text: items.length + ' demo' + (items.length === 1 ? '' : 's') }));
+                content.appendChild(head);
+
+                const grid = el('div', { cls: 'grid' });
+                for (const e of items) grid.appendChild(buildCard(e));
+                content.appendChild(grid);
+            }
+        }
+
+        render();
+    </script>
+</body>
+</html>

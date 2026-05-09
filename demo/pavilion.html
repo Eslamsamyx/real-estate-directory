@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Crystal Pavilion · PlayCanvas</title>
+    <style>
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #05060b;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            color: #e8eaf2;
+            user-select: none;
+            -webkit-user-select: none;
+            cursor: grab;
+        }
+        body.dragging { cursor: grabbing; }
+        #app {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            touch-action: none;
+        }
+
+        /* HUD */
+        .hud {
+            position: fixed;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .hud--tl { top: 28px; left: 32px; }
+        .hud--bl { bottom: 24px; left: 32px; }
+        .hud--br { bottom: 24px; right: 32px; }
+        .hud--tr { top: 28px; right: 32px; }
+
+        .title {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.45em;
+            color: rgba(255, 255, 255, 0.42);
+            text-transform: uppercase;
+            margin: 0 0 8px;
+        }
+        .heading {
+            font-size: 30px;
+            font-weight: 200;
+            letter-spacing: 0.18em;
+            margin: 0;
+            line-height: 1;
+            color: rgba(255, 255, 255, 0.95);
+            text-shadow: 0 0 24px rgba(120, 180, 255, 0.18);
+        }
+        .heading b {
+            font-weight: 400;
+            color: rgba(180, 220, 255, 1);
+        }
+
+        .legend {
+            display: flex;
+            gap: 18px;
+            font-size: 10.5px;
+            letter-spacing: 0.32em;
+            color: rgba(255, 255, 255, 0.45);
+            text-transform: uppercase;
+        }
+        .legend span::before {
+            content: '';
+            display: inline-block;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: rgba(180, 220, 255, 0.85);
+            margin-right: 9px;
+            vertical-align: middle;
+            box-shadow: 0 0 8px rgba(180, 220, 255, 0.7);
+        }
+
+        .stat {
+            font-size: 10.5px;
+            letter-spacing: 0.32em;
+            color: rgba(255, 255, 255, 0.42);
+            text-transform: uppercase;
+            font-variant-numeric: tabular-nums;
+            text-align: right;
+        }
+        .stat span { color: rgba(180, 220, 255, 1); }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 999px;
+            font-size: 10px;
+            letter-spacing: 0.34em;
+            color: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            background: rgba(20, 25, 40, 0.4);
+        }
+
+        /* Loading state */
+        .splash {
+            position: fixed;
+            inset: 0;
+            background: #05060b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            transition: opacity 600ms ease 200ms, visibility 0s linear 800ms;
+        }
+        .splash.hidden { opacity: 0; visibility: hidden; }
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-top-color: rgba(180, 220, 255, 0.9);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Vignette */
+        .vignette {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 5;
+            background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.45) 100%);
+        }
+
+        @media (max-width: 640px) {
+            .heading { font-size: 22px; }
+            .hud--tl, .hud--bl, .hud--br, .hud--tr { left: 18px; right: 18px; top: 18px; bottom: 18px; }
+            .hud--tr, .hud--br { left: auto; }
+            .hud--tl, .hud--bl { right: auto; }
+            .legend { gap: 12px; flex-wrap: wrap; }
+        }
+    </style>
+    <script type="importmap">
+    {
+        "imports": {
+            "playcanvas": "./vendor/playcanvas.mjs"
+        }
+    }
+    </script>
+</head>
+<body>
+    <canvas id="app"></canvas>
+
+    <div class="splash" id="splash">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="vignette"></div>
+
+    <div class="hud hud--tl">
+        <div class="title">PlayCanvas · WebGL</div>
+        <h1 class="heading">CRYSTAL <b>PAVILION</b></h1>
+    </div>
+
+    <div class="hud hud--tr">
+        <div class="badge">SCENE 01 / 01</div>
+    </div>
+
+    <div class="hud hud--bl">
+        <div class="legend">
+            <span>DRAG · ORBIT</span>
+            <span>SCROLL · ZOOM</span>
+            <span>CLICK · INTERACT</span>
+        </div>
+    </div>
+
+    <div class="hud hud--br">
+        <div class="stat"><span id="fps">--</span> FPS · <span id="tris">--</span> TRIS</div>
+    </div>
+
+    <script type="module">
+        import * as pc from 'playcanvas';
+
+        // --- Boot ----------------------------------------------------------------
+        const canvas = document.getElementById('app');
+
+        const app = new pc.Application(canvas, {
+            mouse: new pc.Mouse(canvas),
+            touch: new pc.TouchDevice(canvas),
+            keyboard: new pc.Keyboard(window),
+            graphicsDeviceOptions: {
+                alpha: false,
+                antialias: true,
+                powerPreference: 'high-performance'
+            }
+        });
+
+        app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
+        app.setCanvasResolution(pc.RESOLUTION_AUTO);
+        window.addEventListener('resize', () => app.resizeCanvas());
+
+        // Scene atmosphere (PlayCanvas v2 API)
+        app.scene.ambientLight = new pc.Color(0.04, 0.05, 0.09);
+        app.scene.fog.type = pc.FOG_EXP2;
+        app.scene.fog.color = new pc.Color(0.02, 0.025, 0.04);
+        app.scene.fog.density = 0.035;
+        app.scene.exposure = 1.0;
+
+        // --- Camera --------------------------------------------------------------
+        const camera = new pc.Entity('camera');
+        camera.addComponent('camera', {
+            clearColor: new pc.Color(0.018, 0.022, 0.038),
+            fov: 55,
+            nearClip: 0.1,
+            farClip: 200,
+            toneMapping: (typeof pc.TONEMAP_ACES !== 'undefined') ? pc.TONEMAP_ACES : undefined
+        });
+        app.root.addChild(camera);
+
+        // Orbit state
+        const orbit = {
+            target: new pc.Vec3(0, 1.6, 0),
+            distance: 11.5,
+            yaw: 30,
+            pitch: 18,
+            // damped values
+            yawCurrent: 30,
+            pitchCurrent: 18,
+            distanceCurrent: 11.5,
+            autoRotate: true,
+            lastInput: 0
+        };
+
+        const applyCamera = () => {
+            const yaw = orbit.yawCurrent * pc.math.DEG_TO_RAD;
+            const pitch = orbit.pitchCurrent * pc.math.DEG_TO_RAD;
+            const cy = Math.cos(pitch) * orbit.distanceCurrent;
+            const px = Math.sin(yaw) * cy;
+            const pz = Math.cos(yaw) * cy;
+            const py = Math.sin(pitch) * orbit.distanceCurrent;
+            camera.setPosition(orbit.target.x + px, orbit.target.y + py, orbit.target.z + pz);
+            camera.lookAt(orbit.target.x, orbit.target.y, orbit.target.z);
+        };
+        applyCamera();
+
+        // --- Lighting ------------------------------------------------------------
+        const sun = new pc.Entity('sun');
+        sun.addComponent('light', {
+            type: 'directional',
+            color: new pc.Color(0.85, 0.92, 1.0),
+            intensity: 0.55,
+            castShadows: true,
+            shadowResolution: 2048,
+            shadowDistance: 30,
+            normalOffsetBias: 0.04,
+            shadowBias: 0.05
+        });
+        sun.setEulerAngles(55, -35, 0);
+        app.root.addChild(sun);
+
+        const rim = new pc.Entity('rimLight');
+        rim.addComponent('light', {
+            type: 'directional',
+            color: new pc.Color(0.4, 0.55, 1.0),
+            intensity: 0.3
+        });
+        rim.setEulerAngles(-20, 165, 0);
+        app.root.addChild(rim);
+
+        // --- Ground --------------------------------------------------------------
+        const groundMat = new pc.StandardMaterial();
+        groundMat.diffuse = new pc.Color(0.025, 0.03, 0.05);
+        groundMat.metalness = 0.85;
+        groundMat.useMetalness = true;
+        groundMat.gloss = 0.78;
+        groundMat.update();
+
+        const ground = new pc.Entity('ground');
+        ground.addComponent('render', {
+            type: 'plane',
+            material: groundMat,
+            castShadows: false,
+            receiveShadows: true
+        });
+        ground.setLocalScale(80, 1, 80);
+        app.root.addChild(ground);
+
+        // Subtle radial accents (dialed back, single guide ring)
+        const gridMat = new pc.StandardMaterial();
+        gridMat.diffuse = new pc.Color(0, 0, 0);
+        gridMat.emissive = new pc.Color(0.04, 0.08, 0.16);
+        gridMat.opacity = 0.10;
+        gridMat.blendType = pc.BLEND_ADDITIVE;
+        gridMat.depthWrite = false;
+        gridMat.update();
+
+        for (let r = 1; r <= 2; r++) {
+            const ring = new pc.Entity('ring_' + r);
+            ring.addComponent('render', { type: 'cylinder', material: gridMat, castShadows: false });
+            const radius = r === 1 ? 5.8 : 8.2;
+            ring.setLocalScale(radius, 0.005, radius);
+            ring.setLocalPosition(0, 0.006, 0);
+            app.root.addChild(ring);
+        }
+
+        // --- Pedestal ------------------------------------------------------------
+        const pedMat = new pc.StandardMaterial();
+        pedMat.diffuse = new pc.Color(0.18, 0.20, 0.25);
+        pedMat.metalness = 0.65;
+        pedMat.useMetalness = true;
+        pedMat.gloss = 0.55;
+        pedMat.update();
+
+        const pedTopMat = new pc.StandardMaterial();
+        pedTopMat.diffuse = new pc.Color(0.04, 0.05, 0.08);
+        pedTopMat.emissive = new pc.Color(0.10, 0.28, 0.55);
+        pedTopMat.emissiveIntensity = 1.4;
+        pedTopMat.metalness = 0.2;
+        pedTopMat.useMetalness = true;
+        pedTopMat.gloss = 0.3;
+        pedTopMat.update();
+
+        const pedestal = new pc.Entity('pedestal');
+        pedestal.addComponent('render', { type: 'cylinder', material: pedMat });
+        pedestal.setLocalScale(1.5, 0.3, 1.5);
+        pedestal.setLocalPosition(0, 0.15, 0);
+        app.root.addChild(pedestal);
+
+        // Glowing top disc on pedestal
+        const pedTop = new pc.Entity('pedTop');
+        pedTop.addComponent('render', { type: 'cylinder', material: pedTopMat, castShadows: false });
+        pedTop.setLocalScale(1.36, 0.05, 1.36);
+        pedTop.setLocalPosition(0, 0.32, 0);
+        app.root.addChild(pedTop);
+
+        // Glowing core (orb above pedestal)
+        const coreMat = new pc.StandardMaterial();
+        coreMat.diffuse = new pc.Color(0, 0, 0);
+        coreMat.emissive = new pc.Color(0.6, 0.85, 1.0);
+        coreMat.emissiveIntensity = 4.5;
+        coreMat.update();
+
+        const core = new pc.Entity('core');
+        core.addComponent('render', { type: 'sphere', material: coreMat, castShadows: false });
+        core.setLocalScale(0.42, 0.42, 0.42);
+        core.setLocalPosition(0, 0.65, 0);
+        app.root.addChild(core);
+
+        const coreLight = new pc.Entity('coreLight');
+        coreLight.addComponent('light', {
+            type: 'point',
+            color: new pc.Color(0.5, 0.8, 1.0),
+            intensity: 1.6,
+            range: 10,
+            castShadows: false
+        });
+        coreLight.setLocalPosition(0, 0.65, 0);
+        app.root.addChild(coreLight);
+
+        // --- Crystals ------------------------------------------------------------
+        const palette = [
+            { hue: [1.0, 0.25, 0.55], name: 'rose'    },
+            { hue: [1.0, 0.55, 0.18], name: 'amber'   },
+            { hue: [0.95, 0.85, 0.30], name: 'citrine'},
+            { hue: [0.35, 1.00, 0.55], name: 'jade'   },
+            { hue: [0.20, 0.80, 1.00], name: 'azure'  },
+            { hue: [0.55, 0.35, 1.00], name: 'iris'   },
+            { hue: [0.95, 0.30, 0.95], name: 'orchid' },
+            { hue: [0.30, 0.95, 0.95], name: 'cyan'   }
+        ];
+
+        const crystals = [];
+        const N = palette.length;
+        const ringRadius = 5.4;
+
+        for (let i = 0; i < N; i++) {
+            const p = palette[i];
+            const angle = (i / N) * Math.PI * 2;
+
+            const mat = new pc.StandardMaterial();
+            mat.diffuse = new pc.Color(p.hue[0] * 0.05, p.hue[1] * 0.05, p.hue[2] * 0.05);
+            mat.emissive = new pc.Color(p.hue[0], p.hue[1], p.hue[2]);
+            mat.emissiveIntensity = 1.3;
+            mat.metalness = 0.1;
+            mat.useMetalness = true;
+            mat.gloss = 0.95;
+            mat.opacity = 0.92;
+            mat.blendType = pc.BLEND_NORMAL;
+            mat.update();
+
+            // Crystal body — diamond-shape (top cone + bottom inverted cone)
+            const crystal = new pc.Entity('crystal_' + p.name);
+            // Parent is just a transform, no render
+            const baseY = 1.8;
+            crystal.setPosition(
+                Math.cos(angle) * ringRadius,
+                baseY,
+                Math.sin(angle) * ringRadius
+            );
+            app.root.addChild(crystal);
+
+            // Top cone: base at y=0, tip at y=+1.4
+            const top = new pc.Entity('top');
+            top.addComponent('render', { type: 'cone', material: mat });
+            top.setLocalScale(0.55, 1.4, 0.55);
+            top.setLocalPosition(0, 0.70, 0);
+            crystal.addChild(top);
+
+            // Bottom cone (inverted): base at y=0, tip at y=-0.6
+            const bot = new pc.Entity('bot');
+            bot.addComponent('render', { type: 'cone', material: mat });
+            bot.setLocalScale(0.55, 0.6, 0.55);
+            bot.setLocalEulerAngles(180, 0, 0);
+            bot.setLocalPosition(0, -0.30, 0);
+            crystal.addChild(bot);
+
+            // Inner point light
+            const pLight = new pc.Entity('pl_' + i);
+            pLight.addComponent('light', {
+                type: 'point',
+                color: new pc.Color(p.hue[0], p.hue[1], p.hue[2]),
+                intensity: 0.8,
+                range: 6,
+                castShadows: false
+            });
+            crystal.addChild(pLight);
+
+            crystals.push({
+                entity: crystal,
+                material: mat,
+                color: p.hue,
+                light: pLight,
+                phase: (i / N) * Math.PI * 2,
+                orbitAngle: angle,
+                baseY: baseY,
+                pulse: 0,
+                hover: 0,
+                radius: 0.9 // approx pick radius
+            });
+        }
+
+        // --- Stars ---------------------------------------------------------------
+        const starMat = new pc.StandardMaterial();
+        starMat.diffuse = new pc.Color(0, 0, 0);
+        starMat.emissive = new pc.Color(0.9, 0.95, 1.0);
+        starMat.emissiveIntensity = 1.2;
+        starMat.update();
+
+        const starParent = new pc.Entity('stars');
+        app.root.addChild(starParent);
+
+        for (let i = 0; i < 80; i++) {
+            const s = new pc.Entity();
+            s.addComponent('render', { type: 'sphere', material: starMat, castShadows: false });
+            const r = 70;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            const sx = r * Math.sin(phi) * Math.cos(theta);
+            const sy = Math.abs(r * Math.cos(phi)) + 5;
+            const sz = r * Math.sin(phi) * Math.sin(theta);
+            s.setLocalScale(0.3, 0.3, 0.3);
+            s.setPosition(sx, sy, sz);
+            starParent.addChild(s);
+        }
+
+        // --- Interaction ---------------------------------------------------------
+        const drag = {
+            active: false,
+            id: null,
+            lastX: 0,
+            lastY: 0,
+            moved: 0
+        };
+
+        const beginDrag = (id, x, y) => {
+            drag.active = true;
+            drag.id = id;
+            drag.lastX = x;
+            drag.lastY = y;
+            drag.moved = 0;
+            orbit.lastInput = performance.now();
+            document.body.classList.add('dragging');
+        };
+        const endDrag = () => {
+            drag.active = false;
+            drag.id = null;
+            document.body.classList.remove('dragging');
+        };
+        const moveDrag = (x, y) => {
+            const dx = x - drag.lastX;
+            const dy = y - drag.lastY;
+            drag.moved += Math.abs(dx) + Math.abs(dy);
+            orbit.yaw -= dx * 0.35;
+            orbit.pitch += dy * 0.35;
+            orbit.pitch = Math.max(-5, Math.min(75, orbit.pitch));
+            drag.lastX = x;
+            drag.lastY = y;
+            orbit.lastInput = performance.now();
+            orbit.autoRotate = false;
+        };
+
+        canvas.addEventListener('pointerdown', (e) => {
+            canvas.setPointerCapture(e.pointerId);
+            beginDrag(e.pointerId, e.clientX, e.clientY);
+        });
+        canvas.addEventListener('pointermove', (e) => {
+            if (drag.active && drag.id === e.pointerId) {
+                moveDrag(e.clientX, e.clientY);
+            }
+        });
+        const onUp = (e) => {
+            if (drag.id === e.pointerId) {
+                const wasClick = drag.moved < 6;
+                endDrag();
+                if (wasClick) handleClick(e.clientX, e.clientY);
+            }
+        };
+        canvas.addEventListener('pointerup', onUp);
+        canvas.addEventListener('pointercancel', onUp);
+
+        canvas.addEventListener('wheel', (e) => {
+            orbit.distance += e.deltaY * 0.012;
+            orbit.distance = Math.max(5.5, Math.min(22, orbit.distance));
+            orbit.lastInput = performance.now();
+            orbit.autoRotate = false;
+            e.preventDefault();
+        }, { passive: false });
+
+        // Hover detection
+        let hoveredIndex = -1;
+        canvas.addEventListener('pointermove', (e) => {
+            if (drag.active) return;
+            hoveredIndex = pickCrystal(e.clientX, e.clientY);
+        });
+
+        // --- Picking via ray-sphere ---------------------------------------------
+        const pickCrystal = (clientX, clientY) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+
+            const from = camera.getPosition().clone();
+            const to = new pc.Vec3();
+            camera.camera.screenToWorld(x, y, camera.camera.farClip, to);
+            const dir = new pc.Vec3().sub2(to, from);
+            dir.normalize();
+
+            let bestT = Infinity;
+            let bestI = -1;
+            for (let i = 0; i < crystals.length; i++) {
+                const c = crystals[i];
+                const cp = c.entity.getPosition();
+                const oc = new pc.Vec3().sub2(from, cp);
+                const b = 2 * oc.dot(dir);
+                const cTerm = oc.dot(oc) - c.radius * c.radius;
+                const disc = b * b - 4 * cTerm;
+                if (disc <= 0) continue;
+                const t = (-b - Math.sqrt(disc)) / 2;
+                if (t > 0 && t < bestT) {
+                    bestT = t;
+                    bestI = i;
+                }
+            }
+            return bestI;
+        };
+
+        const handleClick = (clientX, clientY) => {
+            const i = pickCrystal(clientX, clientY);
+            if (i >= 0) {
+                crystals[i].pulse = 1.0;
+            }
+        };
+
+        // --- Frame loop ----------------------------------------------------------
+        let elapsed = 0;
+        let frameCount = 0;
+        let fpsAccum = 0;
+        let lastFpsUpdate = 0;
+        const fpsEl = document.getElementById('fps');
+        const trisEl = document.getElementById('tris');
+
+        app.on('update', (dt) => {
+            elapsed += dt;
+
+            // Auto-rotate when idle
+            const idleMs = performance.now() - orbit.lastInput;
+            if (!drag.active && idleMs > 2500) orbit.autoRotate = true;
+            if (orbit.autoRotate) orbit.yaw += dt * 4;
+
+            // Damped camera follow
+            const damp = 1 - Math.pow(0.001, dt);
+            orbit.yawCurrent += (orbit.yaw - orbit.yawCurrent) * damp;
+            orbit.pitchCurrent += (orbit.pitch - orbit.pitchCurrent) * damp;
+            orbit.distanceCurrent += (orbit.distance - orbit.distanceCurrent) * damp;
+            applyCamera();
+
+            // Animate crystals
+            for (let i = 0; i < crystals.length; i++) {
+                const c = crystals[i];
+
+                // Slow orbit around center
+                c.orbitAngle += dt * 0.08;
+
+                // Float
+                const floatY = c.baseY + Math.sin(elapsed * 0.9 + c.phase) * 0.32;
+                const px = Math.cos(c.orbitAngle) * ringRadius;
+                const pz = Math.sin(c.orbitAngle) * ringRadius;
+                c.entity.setPosition(px, floatY, pz);
+
+                // Spin
+                c.entity.rotate(0, dt * 36, dt * 8);
+
+                // Hover lerp
+                const targetHover = (hoveredIndex === i && !drag.active) ? 1 : 0;
+                c.hover += (targetHover - c.hover) * dt * 8;
+
+                // Pulse decay
+                if (c.pulse > 0) c.pulse = Math.max(0, c.pulse - dt * 1.6);
+
+                // Combined emissive intensity
+                const baseI = 1.3;
+                const intensity = baseI + c.hover * 0.8 + c.pulse * 6;
+                c.material.emissiveIntensity = intensity;
+                c.material.update();
+
+                // Light intensity follows crystal
+                c.light.light.intensity = 0.7 + c.hover * 0.6 + c.pulse * 3.5;
+
+                // Pulse scale (parent is transform-only, scales children uniformly)
+                const s = 1 + c.pulse * 0.25 + c.hover * 0.05;
+                c.entity.setLocalScale(s, s, s);
+            }
+
+            // Pedestal core pulse
+            const corePulse = 4.5 + Math.sin(elapsed * 1.3) * 1.2;
+            coreMat.emissiveIntensity = corePulse;
+            coreMat.update();
+            coreLight.light.intensity = 1.2 + Math.sin(elapsed * 1.3) * 0.5;
+            core.setLocalScale(
+                0.35 + Math.sin(elapsed * 1.3) * 0.025,
+                0.35 + Math.sin(elapsed * 1.3) * 0.025,
+                0.35 + Math.sin(elapsed * 1.3) * 0.025
+            );
+
+            // FPS
+            frameCount++;
+            fpsAccum += dt;
+            const now = performance.now();
+            if (now - lastFpsUpdate > 500) {
+                const fps = Math.round(frameCount / fpsAccum);
+                if (fpsEl) fpsEl.textContent = String(fps).padStart(2, '0');
+                if (trisEl) {
+                    const tris = (app.graphicsDevice.renderTarget && app.graphicsDevice.renderTarget._frameStats?.triangles)
+                        || (app.stats && app.stats.frame && app.stats.frame.triangles)
+                        || (crystals.length * 32 + 5000);
+                    trisEl.textContent = (tris / 1000).toFixed(1) + 'K';
+                }
+                frameCount = 0;
+                fpsAccum = 0;
+                lastFpsUpdate = now;
+            }
+
+            // Cursor hint
+            if (!drag.active) {
+                document.body.style.cursor = (hoveredIndex >= 0) ? 'pointer' : 'grab';
+            }
+        });
+
+        // --- Start ---------------------------------------------------------------
+        app.start();
+        requestAnimationFrame(() => {
+            const splash = document.getElementById('splash');
+            if (splash) splash.classList.add('hidden');
+        });
+
+        // Surface errors
+        window.addEventListener('error', (e) => {
+            console.error('[demo error]', e.message, e.error);
+        });
+    </script>
+</body>
+</html>

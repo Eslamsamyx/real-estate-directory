@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PlayCanvas Workspace · Gallery</title>
+    <style>
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0;
+            min-height: 100vh;
+            background:
+                radial-gradient(ellipse 80% 60% at 30% -10%, rgba(120, 180, 255, 0.06), transparent 60%),
+                radial-gradient(ellipse 70% 50% at 80% 110%, rgba(255, 140, 200, 0.04), transparent 60%),
+                #07080c;
+            color: #e8eaf2;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            line-height: 1.5;
+        }
+
+        .page { max-width: 1200px; margin: 0 auto; padding: 80px 40px 120px; }
+
+        .header { margin-bottom: 64px; }
+        .eyebrow {
+            font-size: 11px; font-weight: 600; letter-spacing: 0.45em;
+            color: rgba(255,255,255,0.42); text-transform: uppercase;
+            margin: 0 0 14px;
+        }
+        h1 {
+            font-size: clamp(36px, 5vw, 56px);
+            font-weight: 200; letter-spacing: 0.05em;
+            margin: 0 0 16px; line-height: 1.05;
+        }
+        h1 b {
+            font-weight: 400;
+            background: linear-gradient(90deg, #b4dcff 0%, #ffb4dc 100%);
+            -webkit-background-clip: text; background-clip: text; color: transparent;
+        }
+        .lede {
+            max-width: 600px; font-size: 14.5px; color: rgba(255,255,255,0.62); margin: 0;
+        }
+        .lede a { color: rgba(180, 220, 255, 1); text-decoration: none; border-bottom: 1px solid rgba(180, 220, 255, 0.3); }
+        .lede a:hover { border-bottom-color: rgba(180, 220, 255, 0.8); }
+
+        /* Featured banner */
+        .banner {
+            display: flex; align-items: stretch;
+            gap: 28px;
+            padding: 28px 32px;
+            margin: 36px 0 48px;
+            border-radius: 16px;
+            border: 1px solid rgba(180, 220, 255, 0.20);
+            background:
+                linear-gradient(120deg, rgba(180,220,255,0.08), rgba(255,180,220,0.06)),
+                rgba(15,18,26,0.5);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            transition: border-color 220ms, transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+            text-decoration: none;
+            color: inherit;
+        }
+        .banner:hover { border-color: rgba(180, 220, 255, 0.45); transform: translateY(-2px); }
+        .banner-text { flex: 1; }
+        .banner .ebrow { font-size: 10.5px; letter-spacing: 0.4em; color: rgba(180,220,255,0.85); text-transform: uppercase; margin: 0 0 6px; }
+        .banner h2 { font-size: 22px; font-weight: 300; letter-spacing: 0.04em; margin: 0 0 6px; color: rgba(255,255,255,0.97); }
+        .banner p { font-size: 13.5px; color: rgba(255,255,255,0.6); margin: 0; max-width: 540px; }
+        .banner .cta {
+            align-self: center;
+            font-size: 11px; letter-spacing: 0.36em; text-transform: uppercase;
+            color: rgba(180, 220, 255, 1);
+            padding: 12px 22px;
+            border: 1px solid rgba(180, 220, 255, 0.5);
+            border-radius: 999px;
+            background: rgba(180, 220, 255, 0.08);
+            white-space: nowrap;
+        }
+        .banner-stats {
+            display: flex; gap: 28px;
+            padding-left: 28px;
+            border-left: 1px solid rgba(255,255,255,0.08);
+            align-self: center;
+        }
+        .banner-stat .num { display: block; font-size: 28px; font-weight: 200; color: rgba(180, 220, 255, 1); letter-spacing: 0.04em; }
+        .banner-stat .lbl { display: block; font-size: 9.5px; letter-spacing: 0.36em; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-top: 2px; }
+
+        .section-title {
+            font-size: 11px; font-weight: 600; letter-spacing: 0.4em;
+            color: rgba(255,255,255,0.45); text-transform: uppercase;
+            margin: 56px 0 22px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 22px;
+        }
+
+        .card {
+            position: relative; display: block;
+            text-decoration: none; color: inherit;
+            border-radius: 14px; overflow: hidden;
+            background: rgba(15, 18, 26, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
+                        border-color 280ms ease, box-shadow 280ms ease;
+        }
+        .card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(255, 255, 255, 0.16);
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .thumb {
+            aspect-ratio: 16 / 9;
+            background-size: cover; background-position: center;
+            background-color: #050608; position: relative;
+        }
+        .thumb::after {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(180deg, transparent 50%, rgba(7,8,12,0.65) 100%);
+        }
+
+        .meta { padding: 18px 20px 22px; position: relative; }
+        .badge {
+            display: inline-block;
+            font-size: 9.5px; letter-spacing: 0.32em; text-transform: uppercase;
+            color: rgba(180, 220, 255, 0.85); margin-bottom: 8px;
+        }
+        .card .name {
+            font-size: 18px; font-weight: 400; letter-spacing: 0.04em;
+            margin: 0 0 6px; color: rgba(255,255,255,0.95);
+        }
+        .card .desc { font-size: 13px; color: rgba(255,255,255,0.55); margin: 0; min-height: 38px; }
+        .card .feature-list { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+        .chip {
+            font-size: 9.5px; letter-spacing: 0.18em; text-transform: uppercase;
+            padding: 4px 8px; border-radius: 4px;
+            background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.55);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .footer {
+            margin-top: 100px; padding-top: 28px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+            font-size: 11.5px; color: rgba(255,255,255,0.4);
+            letter-spacing: 0.1em;
+        }
+        .footer a { color: rgba(180, 220, 255, 0.85); text-decoration: none; }
+        .footer a:hover { color: rgba(180, 220, 255, 1); }
+
+        .infogrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 18px;
+        }
+        .infocard {
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 12px;
+            background: rgba(15, 18, 26, 0.35);
+        }
+        .infocard .num {
+            font-size: 28px; font-weight: 200; color: rgba(180, 220, 255, 1);
+            letter-spacing: 0.04em; display: block; margin-bottom: 4px;
+        }
+        .infocard .lbl {
+            font-size: 10.5px; letter-spacing: 0.3em; text-transform: uppercase;
+            color: rgba(255,255,255,0.45);
+        }
+        .infocard p { margin: 10px 0 0; font-size: 12.5px; color: rgba(255,255,255,0.55); line-height: 1.55; }
+
+        @media (max-width: 720px) {
+            .page { padding: 48px 22px 80px; }
+            .grid { grid-template-columns: 1fr; }
+            .banner { flex-direction: column; gap: 16px; padding: 22px; }
+            .banner-stats { padding-left: 0; padding-top: 18px; border-left: 0; border-top: 1px solid rgba(255,255,255,0.08); }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <header class="header">
+            <p class="eyebrow">PlayCanvas Workspace</p>
+            <h1>Browser-native <b>3D, every angle</b></h1>
+            <p class="lede">
+                Six hand-crafted demos plus the full official PlayCanvas examples library — all
+                running from a vendored ESM build with no bundler and no <code>node_modules</code>.
+                Ships alongside a shallow clone of
+                <a href="https://github.com/playcanvas/engine" target="_blank" rel="noopener">github.com/playcanvas/engine</a>.
+            </p>
+        </header>
+
+        <a class="banner" href="./examples.html">
+            <div class="banner-text">
+                <p class="ebrow">Browse + run</p>
+                <h2>Every official example, runnable locally</h2>
+                <p>Search and filter all 191 demos shipped with the engine — graphics, splats, animation, physics, materials, shaders, XR, audio, UI — and run any of them through the in-workspace example-runner. No external server, no build, no <code>node_modules</code>. Source links go to the local engine clone.</p>
+            </div>
+            <div class="banner-stats">
+                <div class="banner-stat"><span class="num">191</span><span class="lbl">Runnable</span></div>
+                <div class="banner-stat"><span class="num">16</span><span class="lbl">Categories</span></div>
+            </div>
+            <div class="cta">Open browser →</div>
+        </a>
+
+        <h3 class="section-title">Hand-built demos in this workspace</h3>
+
+        <main class="grid">
+
+            <a class="card" href="./pavilion.html">
+                <div class="thumb" style="background-image: url('./thumbs/pavilion.png')"></div>
+                <div class="meta">
+                    <div class="badge">SCENE 01</div>
+                    <h2 class="name">Crystal Pavilion</h2>
+                    <p class="desc">Eight emissive diamond crystals orbiting a glowing pedestal. Click to pulse.</p>
+                    <div class="feature-list">
+                        <span class="chip">Procedural</span>
+                        <span class="chip">PBR</span>
+                        <span class="chip">Picking</span>
+                        <span class="chip">Idle auto-orbit</span>
+                    </div>
+                </div>
+            </a>
+
+            <a class="card" href="./gltf-studio.html">
+                <div class="thumb" style="background-image: url('./thumbs/gltf.png')"></div>
+                <div class="meta">
+                    <div class="badge">SCENE 02</div>
+                    <h2 class="name">glTF Studio</h2>
+                    <p class="desc">A statue model rendered with image-based lighting. Toggle skybox, IBL, exposure.</p>
+                    <div class="feature-list">
+                        <span class="chip">glTF 2.0</span>
+                        <span class="chip">IBL</span>
+                        <span class="chip">Tone mapping</span>
+                        <span class="chip">Live controls</span>
+                    </div>
+                </div>
+            </a>
+
+            <a class="card" href="./splat-stage.html">
+                <div class="thumb" style="background-image: url('./thumbs/splat.png')"></div>
+                <div class="meta">
+                    <div class="badge">SCENE 03</div>
+                    <h2 class="name">Splat Stage</h2>
+                    <p class="desc">A 3D Gaussian Splat capture of a guitar — PlayCanvas's flagship feature.</p>
+                    <div class="feature-list">
+                        <span class="chip">3DGS</span>
+                        <span class="chip">.compressed.ply</span>
+                        <span class="chip">91K splats</span>
+                    </div>
+                </div>
+            </a>
+
+            <a class="card" href="./material-lab.html">
+                <div class="thumb" style="background-image: url('./thumbs/material.png')"></div>
+                <div class="meta">
+                    <div class="badge">SCENE 04</div>
+                    <h2 class="name">Material Lab</h2>
+                    <p class="desc">5×5 sphere matrix sweeping metalness × gloss under PBR + IBL. Hover to inspect.</p>
+                    <div class="feature-list">
+                        <span class="chip">PBR matrix</span>
+                        <span class="chip">3-point lighting</span>
+                        <span class="chip">Hover pick</span>
+                    </div>
+                </div>
+            </a>
+
+            <a class="card" href="./walkthrough.html">
+                <div class="thumb" style="background-image: url('./thumbs/walkthrough.png')"></div>
+                <div class="meta">
+                    <div class="badge">SCENE 05</div>
+                    <h2 class="name">Walkthrough</h2>
+                    <p class="desc">First-person tour of a real apartment captured as a 3D Gaussian Splat. WASD + mouse look.</p>
+                    <div class="feature-list">
+                        <span class="chip">3DGS</span>
+                        <span class="chip">.sog format</span>
+                        <span class="chip">Pointer lock</span>
+                        <span class="chip">Touch sticks</span>
+                    </div>
+                </div>
+            </a>
+
+            <a class="card" href="./particles.html">
+                <div class="thumb" style="background-image: url('./thumbs/particles.png')"></div>
+                <div class="meta">
+                    <div class="badge">SCENE 06</div>
+                    <h2 class="name">Particle Storm</h2>
+                    <p class="desc">1500-particle snowfall over a stylized landscape with directional shadows.</p>
+                    <div class="feature-list">
+                        <span class="chip">Particle system</span>
+                        <span class="chip">Curves</span>
+                        <span class="chip">Additive blend</span>
+                    </div>
+                </div>
+            </a>
+
+        </main>
+
+        <h3 class="section-title">About this workspace</h3>
+        <div class="infogrid">
+            <div class="infocard">
+                <span class="num">3.5 MB</span>
+                <span class="lbl">Engine bundle</span>
+                <p>Vendored ESM build of <code>playcanvas@2</code> imported via a single importmap.</p>
+            </div>
+            <div class="infocard">
+                <span class="num">0</span>
+                <span class="lbl">Build steps</span>
+                <p>No bundler, no transpiler, no <code>package.json</code>. Just <code>python3 -m http.server</code>.</p>
+            </div>
+            <div class="infocard">
+                <span class="num">786 MB</span>
+                <span class="lbl">Engine source</span>
+                <p>Shallow clone at <code>engine/</code> — examples, types, and source for reference.</p>
+            </div>
+            <div class="infocard">
+                <span class="num">6 + 191</span>
+                <span class="lbl">Total demos</span>
+                <p>Six hand-built scenes here plus the full official examples library indexed and linked.</p>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <span>PlayCanvas v2.18.1 · WebGL2 · ESM</span>
+            <span>
+                <a href="https://developer.playcanvas.com/" target="_blank" rel="noopener">User manual</a>
+                ·
+                <a href="https://api.playcanvas.com/engine/" target="_blank" rel="noopener">API reference</a>
+                ·
+                <a href="https://playcanvas.github.io/" target="_blank" rel="noopener">Live examples</a>
+            </span>
+        </footer>
+    </div>
+</body>
+</html>

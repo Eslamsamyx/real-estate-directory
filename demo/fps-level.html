@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>FPS Level · PlayCanvas</title>
+    <style>
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background: #050608;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased; color: #e8eaf2;
+            user-select: none; -webkit-user-select: none;
+        }
+        #app { display: block; width: 100vw; height: 100vh; touch-action: none; cursor: crosshair; }
+        body.locked #app { cursor: none; }
+
+        .hud { position: fixed; pointer-events: none; z-index: 10; }
+        .hud--tl { top: 28px; left: 32px; }
+        .hud--bl { bottom: 24px; left: 32px; }
+        .hud--br { bottom: 24px; right: 32px; }
+
+        .title { font-size: 11px; font-weight: 600; letter-spacing: 0.45em; color: rgba(255,255,255,0.42); text-transform: uppercase; margin: 0 0 8px; }
+        .heading { font-size: 30px; font-weight: 200; letter-spacing: 0.18em; margin: 0; line-height: 1; color: rgba(255,255,255,0.95); text-shadow: 0 0 24px rgba(255,210,160,0.18); }
+        .heading b { font-weight: 400; color: rgba(255,210,160,1); }
+
+        .legend { display: flex; gap: 18px; font-size: 10.5px; letter-spacing: 0.32em; color: rgba(255,255,255,0.45); text-transform: uppercase; }
+        .legend span::before { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: rgba(255,210,160,0.85); margin-right: 9px; vertical-align: middle; box-shadow: 0 0 8px rgba(255,210,160,0.7); }
+
+        .stat { font-size: 10.5px; letter-spacing: 0.32em; color: rgba(255,255,255,0.42); text-transform: uppercase; font-variant-numeric: tabular-nums; text-align: right; }
+        .stat span { color: rgba(255,210,160,1); }
+
+        .splash {
+            position: fixed; inset: 0; background: #050608;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 18px; z-index: 100;
+            transition: opacity 600ms ease 200ms, visibility 0s linear 800ms;
+        }
+        .splash.hidden { opacity: 0; visibility: hidden; }
+        .spinner { width: 30px; height: 30px; border: 1px solid rgba(255,255,255,0.1); border-top-color: rgba(255,210,160,0.9); border-radius: 50%; animation: spin 0.9s linear infinite; }
+        .splash-label { font-size: 10.5px; letter-spacing: 0.45em; color: rgba(255,255,255,0.4); text-transform: uppercase; }
+        .splash-step { font-size: 9px; letter-spacing: 0.3em; color: rgba(255,255,255,0.3); margin-top: -8px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .start-overlay {
+            position: fixed; inset: 0; z-index: 50;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: rgba(5,6,8,0.72);
+            backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+            transition: opacity 400ms ease, visibility 0s linear 400ms;
+            cursor: pointer;
+        }
+        .start-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        .start-card {
+            text-align: center; padding: 36px 48px;
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 16px; background: rgba(15,18,26,0.7);
+        }
+        .start-card .big { font-size: 24px; font-weight: 200; letter-spacing: 0.10em; margin: 0 0 4px; }
+        .start-card .sub { font-size: 10.5px; letter-spacing: 0.32em; color: rgba(255,255,255,0.55); text-transform: uppercase; margin: 0 0 20px; }
+        .keys {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 12px 24px; font-size: 11px; letter-spacing: 0.06em;
+            color: rgba(255,255,255,0.7); margin: 16px 0 24px;
+        }
+        .keys b {
+            display: inline-block; min-width: 52px; padding: 4px 10px;
+            border: 1px solid rgba(255,255,255,0.16); border-radius: 6px;
+            background: rgba(0,0,0,0.3); text-align: center;
+            font-family: ui-monospace, "SF Mono", Menlo, monospace;
+            font-size: 10px; letter-spacing: 0.05em; margin-right: 10px; font-weight: 400;
+        }
+        .start-cta {
+            display: inline-block; padding: 11px 26px;
+            border: 1px solid rgba(255,210,160,0.5); border-radius: 999px;
+            background: rgba(255,210,160,0.08);
+            color: rgba(255,210,160,1);
+            font-size: 10.5px; letter-spacing: 0.4em; text-transform: uppercase;
+        }
+        .credit { font-size: 9px; letter-spacing: 0.2em; color: rgba(255,255,255,0.35); margin-top: 14px; }
+
+        .reticle {
+            position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+            width: 4px; height: 4px;
+            background: rgba(255,255,255,0.65); border-radius: 50%;
+            z-index: 9; pointer-events: none;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.5);
+            opacity: 0; transition: opacity 200ms;
+        }
+        body.locked .reticle { opacity: 1; }
+
+        .lock-hint {
+            position: fixed; left: 50%; bottom: 80px; transform: translateX(-50%);
+            font-size: 9.5px; letter-spacing: 0.36em; color: rgba(255,255,255,0.35); text-transform: uppercase;
+            z-index: 9; pointer-events: none;
+            opacity: 0; transition: opacity 200ms;
+        }
+        body.locked .lock-hint { opacity: 1; }
+
+        .vignette { position: fixed; inset: 0; pointer-events: none; z-index: 5; background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.35) 100%); }
+
+        .back-link {
+            position: fixed; top: 28px; right: 32px; z-index: 11;
+            font-size: 10.5px; letter-spacing: 0.32em; color: rgba(255,255,255,0.55); text-transform: uppercase;
+            text-decoration: none; padding: 8px 14px;
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 999px;
+            background: rgba(15,17,25,0.4);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        }
+        .back-link:hover { color: #fff; border-color: rgba(255,255,255,0.25); }
+
+        @media (max-width: 640px) {
+            .heading { font-size: 22px; }
+            .hud--tl, .hud--bl, .hud--br { left: 18px; right: 18px; top: 18px; bottom: 18px; }
+            .hud--br { left: auto; }
+            .hud--tl, .hud--bl { right: auto; }
+            .legend { gap: 12px; flex-wrap: wrap; }
+            .start-card { padding: 24px 28px; }
+            .keys { display: none; }
+        }
+    </style>
+    <script type="importmap">
+    {
+        "imports": { "playcanvas": "./vendor/playcanvas.mjs" }
+    }
+    </script>
+</head>
+<body>
+    <canvas id="app"></canvas>
+
+    <div class="splash" id="splash">
+        <div class="spinner"></div>
+        <div class="splash-label" id="splash-label">Loading physics + level</div>
+        <div class="splash-step" id="splash-step">Booting</div>
+    </div>
+
+    <div class="start-overlay" id="start">
+        <div class="start-card">
+            <p class="big">FPS Level</p>
+            <p class="sub">Real geometry · Real collisions · Bloom post-FX</p>
+            <div class="keys">
+                <span><b>W A S D</b>Move</span>
+                <span><b>Mouse</b>Look</span>
+                <span><b>Space</b>Jump</span>
+                <span><b>Esc</b>Release</span>
+            </div>
+            <span class="start-cta">CLICK TO ENTER</span>
+            <div class="credit">
+                Level: <code>fps-map.glb</code> · Sky: <code>morning-env-atlas</code> · Physics: Ammo (Bullet)
+            </div>
+        </div>
+    </div>
+
+    <div class="reticle"></div>
+    <div class="lock-hint">ESC to release pointer</div>
+    <div class="vignette"></div>
+
+    <a class="back-link" href="./index.html">← GALLERY</a>
+
+    <div class="hud hud--tl">
+        <div class="title">PlayCanvas · glTF + Ammo + Bloom</div>
+        <h1 class="heading">FPS <b>LEVEL</b></h1>
+    </div>
+
+    <div class="hud hud--bl">
+        <div class="legend">
+            <span>WASD · MOVE</span>
+            <span>SPACE · JUMP</span>
+            <span>MOUSE · LOOK</span>
+        </div>
+    </div>
+
+    <div class="hud hud--br">
+        <div class="stat"><span id="fps">--</span> FPS</div>
+    </div>
+
+    <script type="module">
+        import * as pc from 'playcanvas';
+        import { FirstPersonController } from '../engine/scripts/esm/first-person-controller.mjs';
+
+        const canvas = document.getElementById('app');
+        const splash = document.getElementById('splash');
+        const splashStep = document.getElementById('splash-step');
+        const startOverlay = document.getElementById('start');
+        const fpsEl = document.getElementById('fps');
+
+        const setStep = (t) => { if (splashStep) splashStep.textContent = t; };
+
+        // ----- Boot Ammo physics --------------------------------------------------
+        setStep('Loading Ammo (Bullet) WASM');
+
+        const AMMO_BASE = '../engine/examples/src/lib/ammo';
+        pc.WasmModule.setConfig('Ammo', {
+            glueUrl:     `${AMMO_BASE}/ammo.wasm.js`,
+            wasmUrl:     `${AMMO_BASE}/ammo.wasm.wasm`,
+            fallbackUrl: `${AMMO_BASE}/ammo.js`
+        });
+        await new Promise((resolve) => {
+            pc.WasmModule.getInstance('Ammo', () => resolve(true));
+        });
+
+        // ----- Create app ---------------------------------------------------------
+        setStep('Creating graphics device');
+
+        const app = new pc.Application(canvas, {
+            mouse: new pc.Mouse(canvas),
+            touch: new pc.TouchDevice(canvas),
+            keyboard: new pc.Keyboard(window),
+            gamepads: new pc.GamePads(),
+            graphicsDeviceOptions: { antialias: true, powerPreference: 'high-performance' }
+        });
+        app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
+        app.setCanvasResolution(pc.RESOLUTION_AUTO);
+        window.addEventListener('resize', () => app.resizeCanvas());
+
+        // Higher gravity so jumps feel responsive (matches the engine example)
+        app.systems.rigidbody?.gravity.set(0, -18, 0);
+
+        // ----- Load assets --------------------------------------------------------
+        setStep('Loading level + sky');
+
+        const ENGINE_ASSETS = '../engine/examples/assets';
+        const mapAsset = new pc.Asset('map', 'container', { url: `${ENGINE_ASSETS}/models/fps-map.glb` });
+        const skyAsset = new pc.Asset(
+            'morning-env-atlas',
+            'texture',
+            { url: `${ENGINE_ASSETS}/cubemaps/morning-env-atlas.png` },
+            { type: pc.TEXTURETYPE_RGBP, mipmaps: false }
+        );
+
+        await new Promise((resolve, reject) => {
+            new pc.AssetListLoader([mapAsset, skyAsset], app.assets).load((errors) => {
+                if (errors) reject(errors); else resolve();
+            });
+        });
+
+        // ----- Sky / lighting -----------------------------------------------------
+        setStep('Building scene');
+
+        app.scene.envAtlas = skyAsset.resource;
+        app.scene.skyboxMip = 0;
+        app.scene.skyboxIntensity = 1.0;
+        app.scene.exposure = 0.4;
+        // Extra brightness for the clipped sun in the skybox so it blooms
+        if ('skyboxHighlightMultiplier' in app.scene) app.scene.skyboxHighlightMultiplier = 50;
+        app.scene.skyboxRotation = new pc.Quat().setFromEulerAngles(0, 10, 0);
+
+        // ----- Camera -------------------------------------------------------------
+        const camera = new pc.Entity('camera');
+        camera.addComponent('camera', {
+            farClip: 100,
+            nearClip: 0.05,
+            fov: 90
+        });
+        camera.setLocalPosition(0, 0.5, 0);
+
+        // Custom render passes (bloom + tonemap)
+        try {
+            if (typeof pc.CameraFrame !== 'undefined') {
+                const cameraFrame = new pc.CameraFrame(app, camera.camera);
+                cameraFrame.rendering.samples = 4;
+                cameraFrame.rendering.toneMapping = pc.TONEMAP_ACES2 ?? pc.TONEMAP_ACES;
+                cameraFrame.bloom.enabled = true;
+                cameraFrame.bloom.intensity = 0.01;
+                cameraFrame.update();
+            }
+        } catch (err) {
+            console.warn('[fps-level] CameraFrame not available, falling back to plain camera', err);
+        }
+
+        // ----- Level (level mesh + static collision) ------------------------------
+        const map = mapAsset.resource.instantiateRenderEntity();
+        map.setLocalScale(2, 2, 2);
+        map.setLocalEulerAngles(-90, 0, 0);
+        map.findComponents('render').forEach((render) => {
+            const entity = render.entity;
+            entity.addComponent('rigidbody', { type: 'static' });
+            entity.addComponent('collision', { type: 'mesh', renderAsset: render.asset });
+        });
+        const level = new pc.Entity('level');
+        level.addChild(map);
+        app.root.addChild(level);
+
+        // ----- Character controller (capsule + dynamic rigid body) ----------------
+        const characterController = new pc.Entity('cc');
+        characterController.setPosition(5, 2, 10);
+        characterController.addChild(camera);
+        characterController.addComponent('collision', {
+            type: 'capsule',
+            radius: 0.5,
+            height: 2
+        });
+        characterController.addComponent('rigidbody', {
+            type: 'dynamic',
+            mass: 100,
+            linearDamping: 0,
+            angularDamping: 0,
+            linearFactor: pc.Vec3.ONE,
+            angularFactor: pc.Vec3.ZERO,
+            friction: 0.5,
+            restitution: 0
+        });
+        characterController.addComponent('script');
+        const fpc = characterController.script.create(FirstPersonController, {
+            properties: {
+                camera,
+                jumpForce: 850
+            }
+        });
+        app.root.addChild(characterController);
+
+        app.start();
+        requestAnimationFrame(() => splash.classList.add('hidden'));
+
+        // ----- Pointer-lock state for cursor styling -----------------------------
+        document.addEventListener('pointerlockchange', () => {
+            const locked = document.pointerLockElement === canvas;
+            document.body.classList.toggle('locked', locked);
+            if (locked) startOverlay.classList.add('hidden');
+        });
+        startOverlay.addEventListener('click', () => {
+            // The FirstPersonController acquires pointer lock on canvas mousedown via
+            // KeyboardMouseSource; we just need to dismiss the overlay so the click reaches it.
+            startOverlay.classList.add('hidden');
+        });
+
+        // ----- FPS counter --------------------------------------------------------
+        let frameCount = 0, fpsAccum = 0, lastFpsTs = 0;
+        app.on('update', (dt) => {
+            frameCount++; fpsAccum += dt;
+            const now = performance.now();
+            if (now - lastFpsTs > 500) {
+                if (fpsEl) fpsEl.textContent = String(Math.round(frameCount / fpsAccum)).padStart(2, '0');
+                frameCount = 0; fpsAccum = 0; lastFpsTs = now;
+            }
+        });
+
+        // ----- Joystick UI for touch (matches the engine example pattern) --------
+        const isTouch = matchMedia('(pointer: coarse)').matches;
+        if (isTouch && fpc?.joystickEventName) {
+            const makeStick = (side) => {
+                const baseSize = 100, stickSize = 60;
+                const base = document.createElement('div');
+                Object.assign(base.style, {
+                    display: 'none', position: 'absolute',
+                    width: `${baseSize}px`, height: `${baseSize}px`,
+                    borderRadius: '50%',
+                    background: 'rgba(20, 25, 40, 0.4)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    backdropFilter: 'blur(8px)',
+                    pointerEvents: 'none',
+                    zIndex: 8
+                });
+                const stick = document.createElement('div');
+                Object.assign(stick.style, {
+                    display: 'none', position: 'absolute',
+                    width: `${stickSize}px`, height: `${stickSize}px`,
+                    borderRadius: '50%',
+                    background: 'rgba(255,210,160,0.45)',
+                    border: '1px solid rgba(255,210,160,0.7)',
+                    pointerEvents: 'none',
+                    zIndex: 9
+                });
+                document.body.append(base, stick);
+                app.on(`${fpc.joystickEventName}:${side}`, (bx, by, sx, sy) => {
+                    if (bx < 0 || by < 0) {
+                        base.style.display = 'none';
+                        stick.style.display = 'none';
+                        return;
+                    }
+                    base.style.display = 'block';
+                    base.style.left = `${bx - baseSize * 0.5}px`;
+                    base.style.top  = `${by - baseSize * 0.5}px`;
+                    stick.style.display = 'block';
+                    stick.style.left = `${sx - stickSize * 0.5}px`;
+                    stick.style.top  = `${sy - stickSize * 0.5}px`;
+                });
+            };
+            makeStick('left');
+            makeStick('right');
+        }
+
+        window.addEventListener('error', (e) => console.error('[fps-level]', e.message, e.error));
+    </script>
+</body>
+</html>

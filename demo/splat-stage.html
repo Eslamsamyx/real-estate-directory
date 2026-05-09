@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Splat Stage · PlayCanvas</title>
+    <style>
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background: #050608;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased; color: #e8eaf2;
+            user-select: none; -webkit-user-select: none; cursor: grab;
+        }
+        body.dragging { cursor: grabbing; }
+        #app { display: block; width: 100vw; height: 100vh; touch-action: none; }
+
+        .hud { position: fixed; pointer-events: none; z-index: 10; }
+        .hud--tl { top: 28px; left: 32px; }
+        .hud--bl { bottom: 24px; left: 32px; }
+        .hud--br { bottom: 24px; right: 32px; }
+
+        .title { font-size: 11px; font-weight: 600; letter-spacing: 0.45em; color: rgba(255,255,255,0.42); text-transform: uppercase; margin: 0 0 8px; }
+        .heading { font-size: 30px; font-weight: 200; letter-spacing: 0.18em; margin: 0; line-height: 1; color: rgba(255,255,255,0.95); text-shadow: 0 0 24px rgba(255,140,200,0.18); }
+        .heading b { font-weight: 400; color: rgba(255,170,210,1); }
+
+        .legend { display: flex; gap: 18px; font-size: 10.5px; letter-spacing: 0.32em; color: rgba(255,255,255,0.45); text-transform: uppercase; }
+        .legend span::before { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: rgba(255,170,210,0.85); margin-right: 9px; vertical-align: middle; box-shadow: 0 0 8px rgba(255,170,210,0.7); }
+
+        .stat { font-size: 10.5px; letter-spacing: 0.32em; color: rgba(255,255,255,0.42); text-transform: uppercase; font-variant-numeric: tabular-nums; text-align: right; }
+        .stat span { color: rgba(255,170,210,1); }
+
+        .badge {
+            display: inline-block; padding: 6px 12px;
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 999px;
+            font-size: 10px; letter-spacing: 0.34em; color: rgba(255,255,255,0.65);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            background: rgba(20,25,40,0.4);
+        }
+
+        .splash { position: fixed; inset: 0; background: #050608; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; z-index: 100; transition: opacity 600ms ease 200ms, visibility 0s linear 800ms; }
+        .splash.hidden { opacity: 0; visibility: hidden; }
+        .spinner { width: 30px; height: 30px; border: 1px solid rgba(255,255,255,0.1); border-top-color: rgba(255,170,210,0.9); border-radius: 50%; animation: spin 0.9s linear infinite; }
+        .splash-label { font-size: 10.5px; letter-spacing: 0.45em; color: rgba(255,255,255,0.4); text-transform: uppercase; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .vignette { position: fixed; inset: 0; pointer-events: none; z-index: 5; background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.55) 100%); }
+
+        .back-link {
+            position: fixed; top: 28px; right: 32px; z-index: 11;
+            font-size: 10.5px; letter-spacing: 0.32em; color: rgba(255,255,255,0.55); text-transform: uppercase;
+            text-decoration: none; padding: 8px 14px;
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 999px;
+            background: rgba(15,17,25,0.4);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        }
+        .back-link:hover { color: #fff; border-color: rgba(255,255,255,0.25); }
+
+        @media (max-width: 640px) {
+            .heading { font-size: 22px; }
+            .hud--tl, .hud--bl, .hud--br { left: 18px; right: 18px; top: 18px; bottom: 18px; }
+            .hud--br { left: auto; }
+            .hud--tl, .hud--bl { right: auto; }
+            .legend { gap: 12px; flex-wrap: wrap; }
+        }
+    </style>
+    <script type="importmap">
+    {
+        "imports": { "playcanvas": "./vendor/playcanvas.mjs" }
+    }
+    </script>
+</head>
+<body>
+    <canvas id="app"></canvas>
+
+    <div class="splash" id="splash">
+        <div class="spinner"></div>
+        <div class="splash-label">Loading 3D Gaussian Splat · 1.5 MB</div>
+    </div>
+
+    <div class="vignette"></div>
+
+    <a class="back-link" href="./index.html">← GALLERY</a>
+
+    <div class="hud hud--tl">
+        <div class="title">PlayCanvas · 3D Gaussian Splatting</div>
+        <h1 class="heading">SPLAT <b>STAGE</b></h1>
+    </div>
+
+    <div class="hud hud--bl">
+        <div class="legend">
+            <span>DRAG · ORBIT</span>
+            <span>SCROLL · ZOOM</span>
+        </div>
+    </div>
+
+    <div class="hud hud--br">
+        <div class="stat"><span id="fps">--</span> FPS · <span id="splatCount">--</span> SPLATS</div>
+    </div>
+
+    <script type="module">
+        import * as pc from 'playcanvas';
+
+        const canvas = document.getElementById('app');
+        const splash = document.getElementById('splash');
+        const fpsEl = document.getElementById('fps');
+        const splatCountEl = document.getElementById('splatCount');
+
+        const app = new pc.Application(canvas, {
+            mouse: new pc.Mouse(canvas),
+            touch: new pc.TouchDevice(canvas),
+            keyboard: new pc.Keyboard(window),
+            graphicsDeviceOptions: {
+                // Gaussian Splats don't benefit from MSAA — disabling saves perf
+                antialias: false,
+                powerPreference: 'high-performance'
+            }
+        });
+
+        app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
+        app.setCanvasResolution(pc.RESOLUTION_AUTO);
+        window.addEventListener('resize', () => app.resizeCanvas());
+
+        // Camera
+        const camera = new pc.Entity('camera');
+        camera.addComponent('camera', {
+            clearColor: new pc.Color(0.02, 0.025, 0.035),
+            fov: 50,
+            nearClip: 0.05,
+            farClip: 200
+        });
+        app.root.addChild(camera);
+
+        // Subtle backdrop "spotlight" feel — a vignette is on the DOM, plus a faint circular floor
+        const floorMat = new pc.StandardMaterial();
+        floorMat.diffuse = new pc.Color(0, 0, 0);
+        floorMat.emissive = new pc.Color(0.05, 0.06, 0.10);
+        floorMat.emissiveIntensity = 0.6;
+        floorMat.opacity = 0.25;
+        floorMat.blendType = pc.BLEND_ADDITIVE;
+        floorMat.depthWrite = false;
+        floorMat.update();
+
+        const floor = new pc.Entity('floor');
+        floor.addComponent('render', { type: 'cylinder', material: floorMat, castShadows: false });
+        floor.setLocalScale(8, 0.005, 8);
+        floor.setLocalPosition(0, -1.5, 0);
+        app.root.addChild(floor);
+
+        // ----- Asset loading ---------------------------------------------------
+        const ENGINE = '../engine/examples/assets';
+        const guitarAsset = new pc.Asset('guitar', 'gsplat', {
+            url: `${ENGINE}/splats/guitar.compressed.ply`
+        });
+
+        const loader = new pc.AssetListLoader([guitarAsset], app.assets);
+
+        // Orbit state
+        const orbit = {
+            target: new pc.Vec3(0, 0, 0),
+            distance: 4,
+            yaw: 30,
+            pitch: 8,
+            yawCurrent: 30,
+            pitchCurrent: 8,
+            distanceCurrent: 4,
+            autoRotate: true,
+            lastInput: 0
+        };
+
+        const applyCamera = () => {
+            const yaw = orbit.yawCurrent * pc.math.DEG_TO_RAD;
+            const pitch = orbit.pitchCurrent * pc.math.DEG_TO_RAD;
+            const cy = Math.cos(pitch) * orbit.distanceCurrent;
+            camera.setPosition(
+                orbit.target.x + Math.sin(yaw) * cy,
+                orbit.target.y + Math.sin(pitch) * orbit.distanceCurrent,
+                orbit.target.z + Math.cos(yaw) * cy
+            );
+            camera.lookAt(orbit.target.x, orbit.target.y, orbit.target.z);
+        };
+        applyCamera();
+
+        // ----- Drag input ------------------------------------------------------
+        const drag = { active: false, id: null, lastX: 0, lastY: 0 };
+        canvas.addEventListener('pointerdown', (e) => {
+            canvas.setPointerCapture(e.pointerId);
+            drag.active = true; drag.id = e.pointerId;
+            drag.lastX = e.clientX; drag.lastY = e.clientY;
+            orbit.lastInput = performance.now();
+            orbit.autoRotate = false;
+            document.body.classList.add('dragging');
+        });
+        canvas.addEventListener('pointermove', (e) => {
+            if (!drag.active || drag.id !== e.pointerId) return;
+            orbit.yaw -= (e.clientX - drag.lastX) * 0.4;
+            orbit.pitch += (e.clientY - drag.lastY) * 0.4;
+            orbit.pitch = Math.max(-60, Math.min(70, orbit.pitch));
+            drag.lastX = e.clientX; drag.lastY = e.clientY;
+            orbit.lastInput = performance.now();
+        });
+        const onUp = (e) => {
+            if (drag.id === e.pointerId) {
+                drag.active = false; drag.id = null;
+                document.body.classList.remove('dragging');
+            }
+        };
+        canvas.addEventListener('pointerup', onUp);
+        canvas.addEventListener('pointercancel', onUp);
+        canvas.addEventListener('wheel', (e) => {
+            orbit.distance += e.deltaY * 0.005;
+            orbit.distance = Math.max(1.5, Math.min(15, orbit.distance));
+            orbit.lastInput = performance.now();
+            orbit.autoRotate = false;
+            e.preventDefault();
+        }, { passive: false });
+
+        // ----- Frame loop ------------------------------------------------------
+        let frameCount = 0, fpsAccum = 0, lastFpsTs = 0;
+
+        app.on('update', (dt) => {
+            const idleMs = performance.now() - orbit.lastInput;
+            if (!drag.active && idleMs > 2500) orbit.autoRotate = true;
+            if (orbit.autoRotate) orbit.yaw += dt * 6;
+
+            const damp = 1 - Math.pow(0.001, dt);
+            orbit.yawCurrent += (orbit.yaw - orbit.yawCurrent) * damp;
+            orbit.pitchCurrent += (orbit.pitch - orbit.pitchCurrent) * damp;
+            orbit.distanceCurrent += (orbit.distance - orbit.distanceCurrent) * damp;
+            applyCamera();
+
+            frameCount++;
+            fpsAccum += dt;
+            const now = performance.now();
+            if (now - lastFpsTs > 500) {
+                if (fpsEl) fpsEl.textContent = String(Math.round(frameCount / fpsAccum)).padStart(2, '0');
+                frameCount = 0; fpsAccum = 0; lastFpsTs = now;
+            }
+        });
+
+        // ----- Boot ------------------------------------------------------------
+        loader.load((errors) => {
+            if (errors) {
+                console.error('Asset load errors:', errors);
+                splash.querySelector('.splash-label').textContent = 'Asset load error — see console';
+                return;
+            }
+
+            // Create gsplat entity
+            const guitar = new pc.Entity('guitar');
+            guitar.addComponent('gsplat', {
+                asset: guitarAsset,
+                unified: true
+            });
+            // Most splat captures are stored Y-down — flip to render upright
+            guitar.setLocalEulerAngles(180, 0, 0);
+            app.root.addChild(guitar);
+
+            // Try to read splat count for the HUD
+            try {
+                const splatData = guitarAsset.resource;
+                const count = splatData?.numSplats ?? splatData?.splatData?.numSplats ?? null;
+                if (count && splatCountEl) splatCountEl.textContent = (count / 1000).toFixed(0) + 'K';
+            } catch (_) {}
+
+            // Frame the model
+            try {
+                const aabb = guitar.gsplat?.instance?.meshInstance?.aabb;
+                if (aabb) {
+                    orbit.target.copy(aabb.center);
+                    orbit.distance = aabb.halfExtents.length() * 3;
+                    orbit.distanceCurrent = orbit.distance;
+                    applyCamera();
+                }
+            } catch (_) {}
+
+            requestAnimationFrame(() => splash.classList.add('hidden'));
+        });
+
+        app.start();
+
+        window.addEventListener('error', (e) => console.error('[splat-stage]', e.message, e.error));
+    </script>
+</body>
+</html>

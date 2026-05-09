@@ -13,5 +13,8 @@ engine/
 # Demo vendor build (3.5 MB, regeneratable)
 demo/vendor/
 
+# Playwright MCP runtime artifacts (sessions, traces)
+.playwright-mcp/
+
 # OS noise
 .DS_Store

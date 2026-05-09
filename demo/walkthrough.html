@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Walkthrough · PlayCanvas</title>
+    <style>
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background: #050608;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased; color: #e8eaf2;
+            user-select: none; -webkit-user-select: none;
+        }
+        #app { display: block; width: 100vw; height: 100vh; touch-action: none; cursor: crosshair; }
+        body.locked #app { cursor: none; }
+
+        .hud { position: fixed; pointer-events: none; z-index: 10; }
+        .hud--tl { top: 28px; left: 32px; }
+        .hud--bl { bottom: 24px; left: 32px; }
+        .hud--br { bottom: 24px; right: 32px; }
+
+        .title { font-size: 11px; font-weight: 600; letter-spacing: 0.45em; color: rgba(255,255,255,0.42); text-transform: uppercase; margin: 0 0 8px; }
+        .heading { font-size: 30px; font-weight: 200; letter-spacing: 0.18em; margin: 0; line-height: 1; color: rgba(255,255,255,0.95); text-shadow: 0 0 24px rgba(140,255,200,0.18); }
+        .heading b { font-weight: 400; color: rgba(160,255,210,1); }
+
+        .legend { display: flex; gap: 18px; font-size: 10.5px; letter-spacing: 0.32em; color: rgba(255,255,255,0.45); text-transform: uppercase; }
+        .legend span::before { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: rgba(160,255,210,0.85); margin-right: 9px; vertical-align: middle; box-shadow: 0 0 8px rgba(160,255,210,0.7); }
+
+        .stat { font-size: 10.5px; letter-spacing: 0.32em; color: rgba(255,255,255,0.42); text-transform: uppercase; font-variant-numeric: tabular-nums; text-align: right; }
+        .stat span { color: rgba(160,255,210,1); }
+
+        .splash {
+            position: fixed; inset: 0; background: #050608;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 18px; z-index: 100;
+            transition: opacity 600ms ease 200ms, visibility 0s linear 800ms;
+        }
+        .splash.hidden { opacity: 0; visibility: hidden; }
+        .spinner { width: 30px; height: 30px; border: 1px solid rgba(255,255,255,0.1); border-top-color: rgba(160,255,210,0.9); border-radius: 50%; animation: spin 0.9s linear infinite; }
+        .splash-label { font-size: 10.5px; letter-spacing: 0.45em; color: rgba(255,255,255,0.4); text-transform: uppercase; }
+        .splash-progress { font-size: 9px; letter-spacing: 0.3em; color: rgba(255,255,255,0.3); margin-top: -8px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .start-overlay {
+            position: fixed; inset: 0; z-index: 50;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: rgba(5,6,8,0.72);
+            backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+            transition: opacity 400ms ease, visibility 0s linear 400ms;
+            cursor: pointer;
+        }
+        .start-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        .start-card {
+            text-align: center;
+            padding: 36px 48px;
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 16px;
+            background: rgba(15,18,26,0.7);
+        }
+        .start-card .big {
+            font-size: 24px;
+            font-weight: 200;
+            letter-spacing: 0.10em;
+            margin: 0 0 4px;
+        }
+        .start-card .sub {
+            font-size: 10.5px;
+            letter-spacing: 0.32em;
+            color: rgba(255,255,255,0.55);
+            text-transform: uppercase;
+            margin: 0 0 20px;
+        }
+        .keys {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 12px 24px; font-size: 11px; letter-spacing: 0.06em;
+            color: rgba(255,255,255,0.7);
+            margin: 16px 0 24px;
+        }
+        .keys b {
+            display: inline-block;
+            min-width: 52px; padding: 4px 10px;
+            border: 1px solid rgba(255,255,255,0.16);
+            border-radius: 6px;
+            background: rgba(0,0,0,0.3);
+            text-align: center;
+            font-family: ui-monospace, "SF Mono", Menlo, monospace;
+            font-size: 10px; letter-spacing: 0.05em;
+            margin-right: 10px; font-weight: 400;
+        }
+        .start-cta {
+            display: inline-block;
+            padding: 11px 26px;
+            border: 1px solid rgba(160,255,210,0.5);
+            border-radius: 999px;
+            background: rgba(160,255,210,0.08);
+            color: rgba(160,255,210,1);
+            font-size: 10.5px; letter-spacing: 0.4em; text-transform: uppercase;
+        }
+        .credit {
+            font-size: 9px; letter-spacing: 0.2em;
+            color: rgba(255,255,255,0.35); margin-top: 14px;
+        }
+        .credit a { color: inherit; }
+
+        /* Reticle */
+        .reticle {
+            position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+            width: 4px; height: 4px;
+            background: rgba(255,255,255,0.65);
+            border-radius: 50%; z-index: 9; pointer-events: none;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.5);
+            opacity: 0; transition: opacity 200ms;
+        }
+        body.locked .reticle { opacity: 1; }
+
+        .lock-hint {
+            position: fixed; left: 50%; bottom: 80px; transform: translateX(-50%);
+            font-size: 9.5px; letter-spacing: 0.36em; color: rgba(255,255,255,0.35); text-transform: uppercase;
+            z-index: 9; pointer-events: none;
+            opacity: 0; transition: opacity 200ms;
+        }
+        body.locked .lock-hint { opacity: 1; }
+
+        .vignette { position: fixed; inset: 0; pointer-events: none; z-index: 5; background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.4) 100%); }
+
+        .back-link {
+            position: fixed; top: 28px; right: 32px; z-index: 11;
+            font-size: 10.5px; letter-spacing: 0.32em; color: rgba(255,255,255,0.55); text-transform: uppercase;
+            text-decoration: none; padding: 8px 14px;
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 999px;
+            background: rgba(15,17,25,0.4);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        }
+        .back-link:hover { color: #fff; border-color: rgba(255,255,255,0.25); }
+
+        /* Touch joystick */
+        .joystick {
+            position: fixed; bottom: 24px; left: 24px; z-index: 8;
+            width: 110px; height: 110px;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 50%;
+            background: rgba(15,18,26,0.4);
+            display: none;
+            touch-action: none;
+        }
+        .joystick.show { display: block; }
+        .joystick .stick {
+            position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+            width: 46px; height: 46px;
+            border-radius: 50%;
+            background: rgba(160,255,210,0.45);
+            border: 1px solid rgba(160,255,210,0.7);
+        }
+
+        @media (max-width: 640px) {
+            .heading { font-size: 22px; }
+            .hud--tl, .hud--bl, .hud--br { left: 18px; right: 18px; top: 18px; bottom: 18px; }
+            .hud--br { left: auto; }
+            .hud--tl, .hud--bl { right: auto; }
+            .legend { gap: 12px; flex-wrap: wrap; }
+            .start-card { padding: 24px 28px; }
+            .keys { display: none; }
+        }
+    </style>
+    <script type="importmap">
+    {
+        "imports": { "playcanvas": "./vendor/playcanvas.mjs" }
+    }
+    </script>
+</head>
+<body>
+    <canvas id="app"></canvas>
+
+    <div class="splash" id="splash">
+        <div class="spinner"></div>
+        <div class="splash-label">Streaming captured location · 8 MB</div>
+        <div class="splash-progress" id="progress"></div>
+    </div>
+
+    <div class="start-overlay" id="start">
+        <div class="start-card">
+            <p class="big">Walk through a real apartment</p>
+            <p class="sub">Captured as a 3D Gaussian Splat</p>
+            <div class="keys">
+                <span><b>W A S D</b>Move</span>
+                <span><b>Mouse</b>Look</span>
+                <span><b>Space</b>Up</span>
+                <span><b>Shift</b>Down</span>
+                <span><b>Q E</b>Roll-free turn</span>
+                <span><b>Esc</b>Release</span>
+            </div>
+            <span class="start-cta">CLICK TO ENTER</span>
+            <div class="credit">
+                Capture: Stephane Agullo · CC-BY-4.0 · <a href="https://sa3d.fr" target="_blank" rel="noopener">sa3d.fr</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="reticle"></div>
+    <div class="lock-hint">ESC to release pointer</div>
+    <div class="vignette"></div>
+
+    <a class="back-link" href="./index.html">← GALLERY</a>
+
+    <div class="hud hud--tl">
+        <div class="title">PlayCanvas · 3DGS Walkthrough</div>
+        <h1 class="heading">WALK <b>THROUGH</b></h1>
+    </div>
+
+    <div class="hud hud--bl">
+        <div class="legend">
+            <span>WASD · MOVE</span>
+            <span>MOUSE · LOOK</span>
+            <span>SPACE · ASCEND</span>
+        </div>
+    </div>
+
+    <div class="hud hud--br">
+        <div class="stat"><span id="speed">0.0</span> M/S · <span id="fps">--</span> FPS</div>
+    </div>
+
+    <div class="joystick" id="joystick">
+        <div class="stick" id="stick"></div>
+    </div>
+
+    <script type="module">
+        import * as pc from 'playcanvas';
+
+        const canvas = document.getElementById('app');
+        const splash = document.getElementById('splash');
+        const startOverlay = document.getElementById('start');
+        const fpsEl = document.getElementById('fps');
+        const speedEl = document.getElementById('speed');
+        const progressEl = document.getElementById('progress');
+
+        const isTouch = matchMedia('(pointer: coarse)').matches;
+
+        const app = new pc.Application(canvas, {
+            mouse: new pc.Mouse(canvas),
+            touch: new pc.TouchDevice(canvas),
+            keyboard: new pc.Keyboard(window),
+            graphicsDeviceOptions: {
+                antialias: false,
+                powerPreference: 'high-performance'
+            }
+        });
+
+        app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
+        app.setCanvasResolution(pc.RESOLUTION_AUTO);
+        window.addEventListener('resize', () => app.resizeCanvas());
+
+        // Camera
+        const camera = new pc.Entity('camera');
+        camera.addComponent('camera', {
+            clearColor: new pc.Color(0.02, 0.025, 0.035),
+            fov: 70,
+            nearClip: 0.05,
+            farClip: 200
+        });
+        app.root.addChild(camera);
+
+        // ----- Asset loading ---------------------------------------------------
+        // .sog is dispatched by file extension inside GSplatHandler — we must
+        // pass the real URL (not a blob:) so the SogBundleParser is selected.
+        const ASSET_URL = '../engine/examples/assets/splats/apartment.sog';
+        const splatAsset = new pc.Asset('apartment', 'gsplat', { url: ASSET_URL });
+
+        // ----- Camera state -----------------------------------------------------
+        const cam = {
+            pos: new pc.Vec3(0, 1.6, 4),
+            yaw: 0,
+            pitch: 0,
+            speed: 2.4,        // m/s base walk speed
+            speedFast: 5.5,    // shift-fast (held shift descend overrides this)
+            lookSensitivity: 0.0022,
+            isLocked: false
+        };
+
+        const applyCamera = () => {
+            const yawR = cam.yaw * pc.math.DEG_TO_RAD;
+            const pitchR = cam.pitch * pc.math.DEG_TO_RAD;
+            const fwd = new pc.Vec3(
+                -Math.sin(yawR) * Math.cos(pitchR),
+                Math.sin(pitchR),
+                -Math.cos(yawR) * Math.cos(pitchR)
+            );
+            const target = new pc.Vec3().add2(cam.pos, fwd);
+            camera.setPosition(cam.pos);
+            camera.lookAt(target.x, target.y, target.z);
+        };
+        applyCamera();
+
+        // ----- Mouse look + pointer lock ---------------------------------------
+        const lockPointer = () => {
+            if (isTouch) return; // pointer lock not for touch
+            canvas.requestPointerLock();
+        };
+        const unlockPointer = () => {
+            if (document.pointerLockElement) document.exitPointerLock();
+        };
+
+        document.addEventListener('pointerlockchange', () => {
+            cam.isLocked = document.pointerLockElement === canvas;
+            document.body.classList.toggle('locked', cam.isLocked);
+            if (cam.isLocked) startOverlay.classList.add('hidden');
+        });
+
+        startOverlay.addEventListener('click', () => {
+            if (isTouch) {
+                startOverlay.classList.add('hidden');
+                document.body.classList.add('locked'); // for cursor styling on touch
+            } else {
+                lockPointer();
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!cam.isLocked) return;
+            cam.yaw -= e.movementX * cam.lookSensitivity * 60;
+            cam.pitch -= e.movementY * cam.lookSensitivity * 60;
+            cam.pitch = Math.max(-89, Math.min(89, cam.pitch));
+        });
+
+        // ----- Keyboard input ---------------------------------------------------
+        const keys = new Set();
+        window.addEventListener('keydown', (e) => {
+            keys.add(e.code);
+            if (e.code === 'Escape') unlockPointer();
+        });
+        window.addEventListener('keyup', (e) => keys.delete(e.code));
+        window.addEventListener('blur', () => keys.clear());
+
+        // ----- Touch controls --------------------------------------------------
+        // Left-half drag = move (virtual joystick), right-half drag = look
+        const joystick = document.getElementById('joystick');
+        const stick = document.getElementById('stick');
+        const move = { active: false, id: null, x: 0, y: 0, baseX: 0, baseY: 0 };
+        const look = { active: false, id: null, lastX: 0, lastY: 0 };
+
+        if (isTouch) {
+            const onTouch = (e) => {
+                e.preventDefault();
+                const w = window.innerWidth;
+                for (const t of e.changedTouches) {
+                    if (t.clientX < w * 0.5 && !move.active) {
+                        move.active = true; move.id = t.identifier;
+                        move.baseX = t.clientX; move.baseY = t.clientY;
+                        move.x = 0; move.y = 0;
+                        joystick.style.left = (t.clientX - 55) + 'px';
+                        joystick.style.bottom = (window.innerHeight - t.clientY - 55) + 'px';
+                        joystick.classList.add('show');
+                    } else if (!look.active) {
+                        look.active = true; look.id = t.identifier;
+                        look.lastX = t.clientX; look.lastY = t.clientY;
+                    }
+                }
+            };
+            const onMove = (e) => {
+                e.preventDefault();
+                for (const t of e.changedTouches) {
+                    if (t.identifier === move.id) {
+                        const dx = t.clientX - move.baseX;
+                        const dy = t.clientY - move.baseY;
+                        const r = Math.min(40, Math.hypot(dx, dy));
+                        const a = Math.atan2(dy, dx);
+                        const sx = Math.cos(a) * r, sy = Math.sin(a) * r;
+                        stick.style.left = `calc(50% + ${sx}px)`;
+                        stick.style.top = `calc(50% + ${sy}px)`;
+                        move.x = sx / 40; move.y = sy / 40;
+                    } else if (t.identifier === look.id) {
+                        cam.yaw -= (t.clientX - look.lastX) * 0.25;
+                        cam.pitch -= (t.clientY - look.lastY) * 0.25;
+                        cam.pitch = Math.max(-89, Math.min(89, cam.pitch));
+                        look.lastX = t.clientX; look.lastY = t.clientY;
+                    }
+                }
+            };
+            const onEnd = (e) => {
+                for (const t of e.changedTouches) {
+                    if (t.identifier === move.id) {
+                        move.active = false; move.id = null;
+                        move.x = 0; move.y = 0;
+                        joystick.classList.remove('show');
+                        stick.style.left = '50%'; stick.style.top = '50%';
+                    } else if (t.identifier === look.id) {
+                        look.active = false; look.id = null;
+                    }
+                }
+            };
+            canvas.addEventListener('touchstart', onTouch, { passive: false });
+            canvas.addEventListener('touchmove', onMove, { passive: false });
+            canvas.addEventListener('touchend', onEnd, { passive: false });
+            canvas.addEventListener('touchcancel', onEnd, { passive: false });
+        }
+
+        // ----- Frame loop ------------------------------------------------------
+        let frameCount = 0, fpsAccum = 0, lastFpsTs = 0;
+
+        app.on('update', (dt) => {
+            // Movement input
+            const yawR = cam.yaw * pc.math.DEG_TO_RAD;
+
+            // Forward and right vectors on the horizontal plane (Y locked)
+            const fwd = new pc.Vec3(-Math.sin(yawR), 0, -Math.cos(yawR));
+            const right = new pc.Vec3(Math.cos(yawR), 0, -Math.sin(yawR));
+
+            let mx = 0, my = 0, mUp = 0;
+            if (keys.has('KeyW') || keys.has('ArrowUp'))    my += 1;
+            if (keys.has('KeyS') || keys.has('ArrowDown'))  my -= 1;
+            if (keys.has('KeyA') || keys.has('ArrowLeft'))  mx -= 1;
+            if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
+            if (keys.has('Space'))                          mUp += 1;
+            if (keys.has('ShiftLeft') || keys.has('ShiftRight')) mUp -= 1;
+            if (keys.has('KeyQ'))                           cam.yaw += dt * 60;
+            if (keys.has('KeyE'))                           cam.yaw -= dt * 60;
+
+            // Touch joystick movement
+            mx += move.x;
+            my -= move.y;
+
+            // Speed: hold shift while no descend → boost; here shift descends so no boost
+            const speed = cam.speed;
+
+            const len = Math.hypot(mx, my);
+            if (len > 0) {
+                mx /= Math.max(1, len);
+                my /= Math.max(1, len);
+            }
+
+            const delta = new pc.Vec3();
+            delta.x = (right.x * mx + fwd.x * my) * speed * dt;
+            delta.y = mUp * speed * dt;
+            delta.z = (right.z * mx + fwd.z * my) * speed * dt;
+            cam.pos.add(delta);
+
+            applyCamera();
+
+            // Speed indicator
+            const spd = Math.hypot(delta.x, delta.y, delta.z) / Math.max(0.0001, dt);
+            if (speedEl) speedEl.textContent = spd.toFixed(1);
+
+            // FPS
+            frameCount++;
+            fpsAccum += dt;
+            const now = performance.now();
+            if (now - lastFpsTs > 500) {
+                if (fpsEl) fpsEl.textContent = String(Math.round(frameCount / fpsAccum)).padStart(2, '0');
+                frameCount = 0; fpsAccum = 0; lastFpsTs = now;
+            }
+        });
+
+        // ----- Boot ------------------------------------------------------------
+        const loader = new pc.AssetListLoader([splatAsset], app.assets);
+        loader.load((errors) => {
+            if (errors) {
+                console.error('Asset load errors:', errors);
+                splash.querySelector('.splash-label').textContent = 'Asset load error — see console';
+                return;
+            }
+            const entity = new pc.Entity('apartment');
+            entity.addComponent('gsplat', { asset: splatAsset, unified: true });
+            entity.setLocalEulerAngles(180, 0, 0);
+            app.root.addChild(entity);
+
+            // Place camera at scene centre, eye-height-ish
+            try {
+                const aabb = entity.gsplat?.instance?.meshInstance?.aabb;
+                if (aabb) {
+                    cam.pos.copy(aabb.center);
+                }
+            } catch (_) {}
+
+            requestAnimationFrame(() => splash.classList.add('hidden'));
+        });
+
+        app.start();
+
+        window.addEventListener('error', (e) => console.error('[walkthrough]', e.message, e.error));
+    </script>
+</body>
+</html>

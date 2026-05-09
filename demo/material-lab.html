@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Material Lab · PlayCanvas</title>
+    <style>
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background: #060709;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased; color: #e8eaf2;
+            user-select: none; -webkit-user-select: none; cursor: grab;
+        }
+        body.dragging { cursor: grabbing; }
+        #app { display: block; width: 100vw; height: 100vh; touch-action: none; }
+
+        .hud { position: fixed; pointer-events: none; z-index: 10; }
+        .hud--tl { top: 28px; left: 32px; }
+        .hud--bl { bottom: 24px; left: 32px; }
+        .hud--br { bottom: 24px; right: 32px; }
+
+        .title { font-size: 11px; font-weight: 600; letter-spacing: 0.45em; color: rgba(255,255,255,0.42); text-transform: uppercase; margin: 0 0 8px; }
+        .heading { font-size: 30px; font-weight: 200; letter-spacing: 0.18em; margin: 0; line-height: 1; color: rgba(255,255,255,0.95); text-shadow: 0 0 24px rgba(140,255,200,0.18); }
+        .heading b { font-weight: 400; color: rgba(160,255,210,1); }
+
+        .legend { display: flex; gap: 18px; font-size: 10.5px; letter-spacing: 0.32em; color: rgba(255,255,255,0.45); text-transform: uppercase; }
+        .legend span::before { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: rgba(160,255,210,0.85); margin-right: 9px; vertical-align: middle; box-shadow: 0 0 8px rgba(160,255,210,0.7); }
+
+        .stat { font-size: 10.5px; letter-spacing: 0.32em; color: rgba(255,255,255,0.42); text-transform: uppercase; font-variant-numeric: tabular-nums; text-align: right; }
+        .stat span { color: rgba(160,255,210,1); }
+
+        .axis-label {
+            position: fixed; z-index: 9; pointer-events: none;
+            font-size: 9.5px; letter-spacing: 0.36em; color: rgba(255,255,255,0.45);
+            text-transform: uppercase;
+        }
+        .axis-x { bottom: 60px; left: 50%; transform: translateX(-50%); }
+        .axis-y { top: 50%; left: 18px; transform: translateY(-50%) rotate(-90deg); transform-origin: 0 50%; }
+
+        .vignette { position: fixed; inset: 0; pointer-events: none; z-index: 5; background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.55) 100%); }
+
+        .back-link {
+            position: fixed; top: 28px; right: 32px; z-index: 11;
+            font-size: 10.5px; letter-spacing: 0.32em; color: rgba(255,255,255,0.55); text-transform: uppercase;
+            text-decoration: none; padding: 8px 14px;
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 999px;
+            background: rgba(15,17,25,0.4);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        }
+        .back-link:hover { color: #fff; border-color: rgba(255,255,255,0.25); }
+
+        @media (max-width: 640px) {
+            .heading { font-size: 22px; }
+            .hud--tl, .hud--bl, .hud--br { left: 18px; right: 18px; top: 18px; bottom: 18px; }
+            .hud--br { left: auto; }
+            .hud--tl, .hud--bl { right: auto; }
+            .legend { gap: 12px; flex-wrap: wrap; }
+            .axis-x, .axis-y { display: none; }
+        }
+    </style>
+    <script type="importmap">
+    {
+        "imports": { "playcanvas": "./vendor/playcanvas.mjs" }
+    }
+    </script>
+</head>
+<body>
+    <canvas id="app"></canvas>
+
+    <div class="vignette"></div>
+
+    <a class="back-link" href="./index.html">← GALLERY</a>
+
+    <div class="hud hud--tl">
+        <div class="title">PlayCanvas · PBR Sphere Matrix</div>
+        <h1 class="heading">MATERIAL <b>LAB</b></h1>
+    </div>
+
+    <div class="axis-label axis-x">METALNESS  →  0.0 to 1.0</div>
+    <div class="axis-label axis-y">GLOSS  →  0.0 to 1.0</div>
+
+    <div class="hud hud--bl">
+        <div class="legend">
+            <span>DRAG · ORBIT</span>
+            <span>SCROLL · ZOOM</span>
+            <span>HOVER · INSPECT</span>
+        </div>
+    </div>
+
+    <div class="hud hud--br">
+        <div class="stat" id="hover-stat">M <span id="m-val">--</span> · G <span id="g-val">--</span> · <span id="fps">--</span> FPS</div>
+    </div>
+
+    <script type="module">
+        import * as pc from 'playcanvas';
+
+        const canvas = document.getElementById('app');
+        const fpsEl = document.getElementById('fps');
+        const mEl = document.getElementById('m-val');
+        const gEl = document.getElementById('g-val');
+
+        const app = new pc.Application(canvas, {
+            mouse: new pc.Mouse(canvas),
+            touch: new pc.TouchDevice(canvas),
+            keyboard: new pc.Keyboard(window),
+            graphicsDeviceOptions: { antialias: true, powerPreference: 'high-performance' }
+        });
+
+        app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
+        app.setCanvasResolution(pc.RESOLUTION_AUTO);
+        window.addEventListener('resize', () => app.resizeCanvas());
+
+        app.scene.ambientLight = new pc.Color(0.05, 0.06, 0.08);
+        app.scene.exposure = 1.0;
+
+        // Load environment atlas for IBL — without it, pure metals appear black
+        // because they have no diffuse and rely entirely on environment reflection.
+        const envAsset = new pc.Asset(
+            'helipad',
+            'texture',
+            { url: '../engine/examples/assets/cubemaps/helipad-env-atlas.png' },
+            { type: pc.TEXTURETYPE_RGBP, mipmaps: false }
+        );
+        app.assets.add(envAsset);
+        app.assets.load(envAsset);
+        envAsset.ready(() => {
+            app.scene.envAtlas = envAsset.resource;
+            app.scene.skyboxIntensity = 0.0; // IBL only, no visible skybox
+        });
+
+        // Camera
+        const camera = new pc.Entity('camera');
+        camera.addComponent('camera', {
+            clearColor: new pc.Color(0.03, 0.035, 0.05),
+            fov: 32,
+            nearClip: 0.1,
+            farClip: 200,
+            toneMapping: (typeof pc.TONEMAP_ACES !== 'undefined') ? pc.TONEMAP_ACES : undefined
+        });
+        app.root.addChild(camera);
+
+        // Lights — 3-point lighting setup so the spheres show specular & metalness clearly
+        const key = new pc.Entity('key');
+        key.addComponent('light', {
+            type: 'directional',
+            color: new pc.Color(1.0, 0.95, 0.85),
+            intensity: 1.4,
+            castShadows: true,
+            shadowResolution: 2048,
+            shadowDistance: 30
+        });
+        key.setEulerAngles(45, -30, 0);
+        app.root.addChild(key);
+
+        const fill = new pc.Entity('fill');
+        fill.addComponent('light', {
+            type: 'directional',
+            color: new pc.Color(0.5, 0.65, 1.0),
+            intensity: 0.4
+        });
+        fill.setEulerAngles(20, 130, 0);
+        app.root.addChild(fill);
+
+        const rim = new pc.Entity('rim');
+        rim.addComponent('light', {
+            type: 'directional',
+            color: new pc.Color(1, 0.5, 0.7),
+            intensity: 0.5
+        });
+        rim.setEulerAngles(-15, 200, 0);
+        app.root.addChild(rim);
+
+        // Ground
+        const groundMat = new pc.StandardMaterial();
+        groundMat.diffuse = new pc.Color(0.04, 0.045, 0.06);
+        groundMat.metalness = 0.2;
+        groundMat.useMetalness = true;
+        groundMat.gloss = 0.4;
+        groundMat.update();
+
+        const ground = new pc.Entity('ground');
+        ground.addComponent('render', { type: 'plane', material: groundMat, castShadows: false, receiveShadows: true });
+        ground.setLocalScale(60, 1, 60);
+        app.root.addChild(ground);
+
+        // Sphere matrix: 5x5
+        const N = 5;
+        const spacingX = 1.25;
+        const spacingY = 1.10;
+        const sphereR = 0.50;
+        const yBase = 0.55;
+        const baseColor = new pc.Color(0.85, 0.55, 0.25); // warm copper
+        const spheres = [];
+
+        for (let yi = 0; yi < N; yi++) {       // gloss row (bottom = matte)
+            for (let xi = 0; xi < N; xi++) {   // metalness col (left = dielectric)
+                const m = xi / (N - 1);
+                const g = yi / (N - 1);
+
+                const mat = new pc.StandardMaterial();
+                mat.diffuse = new pc.Color(baseColor.r, baseColor.g, baseColor.b);
+                mat.useMetalness = true;
+                mat.metalness = m;
+                mat.gloss = g;
+                mat.update();
+
+                const sphere = new pc.Entity('s_' + xi + '_' + yi);
+                sphere.addComponent('render', { type: 'sphere', material: mat });
+                sphere.setLocalScale(sphereR * 2, sphereR * 2, sphereR * 2);
+                const x = (xi - (N - 1) / 2) * spacingX;
+                const y = yBase + yi * spacingY;
+                sphere.setLocalPosition(x, y, 0);
+                app.root.addChild(sphere);
+
+                spheres.push({ entity: sphere, material: mat, m, g, radius: sphereR });
+            }
+        }
+
+        const gridCenterY = yBase + (N - 1) * spacingY * 0.5;
+        const orbit = {
+            target: new pc.Vec3(0, gridCenterY, 0),
+            distance: 10,
+            yaw: 0,
+            pitch: 5,
+            yawCurrent: 0,
+            pitchCurrent: 5,
+            distanceCurrent: 10
+        };
+        const applyCamera = () => {
+            const yaw = orbit.yawCurrent * pc.math.DEG_TO_RAD;
+            const pitch = orbit.pitchCurrent * pc.math.DEG_TO_RAD;
+            const cy = Math.cos(pitch) * orbit.distanceCurrent;
+            camera.setPosition(
+                orbit.target.x + Math.sin(yaw) * cy,
+                orbit.target.y + Math.sin(pitch) * orbit.distanceCurrent,
+                orbit.target.z + Math.cos(yaw) * cy
+            );
+            camera.lookAt(orbit.target);
+        };
+        applyCamera();
+
+        // Drag input
+        const drag = { active: false, id: null, lastX: 0, lastY: 0 };
+        canvas.addEventListener('pointerdown', (e) => {
+            canvas.setPointerCapture(e.pointerId);
+            drag.active = true; drag.id = e.pointerId;
+            drag.lastX = e.clientX; drag.lastY = e.clientY;
+            document.body.classList.add('dragging');
+        });
+        canvas.addEventListener('pointermove', (e) => {
+            if (drag.active && drag.id === e.pointerId) {
+                orbit.yaw -= (e.clientX - drag.lastX) * 0.32;
+                orbit.pitch += (e.clientY - drag.lastY) * 0.32;
+                orbit.pitch = Math.max(-15, Math.min(50, orbit.pitch));
+                drag.lastX = e.clientX; drag.lastY = e.clientY;
+            } else {
+                // Hover to inspect
+                inspect(e.clientX, e.clientY);
+            }
+        });
+        const onUp = (e) => {
+            if (drag.id === e.pointerId) {
+                drag.active = false; drag.id = null;
+                document.body.classList.remove('dragging');
+            }
+        };
+        canvas.addEventListener('pointerup', onUp);
+        canvas.addEventListener('pointercancel', onUp);
+        canvas.addEventListener('wheel', (e) => {
+            orbit.distance += e.deltaY * 0.012;
+            orbit.distance = Math.max(5, Math.min(22, orbit.distance));
+            e.preventDefault();
+        }, { passive: false });
+
+        // Pick
+        const inspect = (clientX, clientY) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+            const from = camera.getPosition().clone();
+            const to = new pc.Vec3();
+            camera.camera.screenToWorld(x, y, camera.camera.farClip, to);
+            const dir = new pc.Vec3().sub2(to, from); dir.normalize();
+            let bestT = Infinity, bestI = -1;
+            for (let i = 0; i < spheres.length; i++) {
+                const s = spheres[i];
+                const cp = s.entity.getPosition();
+                const oc = new pc.Vec3().sub2(from, cp);
+                const b = 2 * oc.dot(dir);
+                const cTerm = oc.dot(oc) - s.radius * s.radius;
+                const disc = b * b - 4 * cTerm;
+                if (disc <= 0) continue;
+                const t = (-b - Math.sqrt(disc)) / 2;
+                if (t > 0 && t < bestT) { bestT = t; bestI = i; }
+            }
+            if (bestI >= 0) {
+                mEl.textContent = spheres[bestI].m.toFixed(2);
+                gEl.textContent = spheres[bestI].g.toFixed(2);
+            } else {
+                mEl.textContent = '--';
+                gEl.textContent = '--';
+            }
+        };
+
+        // Frame loop
+        let frameCount = 0, fpsAccum = 0, lastFpsTs = 0;
+        app.on('update', (dt) => {
+            const damp = 1 - Math.pow(0.001, dt);
+            orbit.yawCurrent += (orbit.yaw - orbit.yawCurrent) * damp;
+            orbit.pitchCurrent += (orbit.pitch - orbit.pitchCurrent) * damp;
+            orbit.distanceCurrent += (orbit.distance - orbit.distanceCurrent) * damp;
+            applyCamera();
+
+            frameCount++;
+            fpsAccum += dt;
+            const now = performance.now();
+            if (now - lastFpsTs > 500) {
+                if (fpsEl) fpsEl.textContent = String(Math.round(frameCount / fpsAccum)).padStart(2, '0');
+                frameCount = 0; fpsAccum = 0; lastFpsTs = now;
+            }
+        });
+
+        app.start();
+
+        window.addEventListener('error', (e) => console.error('[material-lab]', e.message, e.error));
+    </script>
+</body>
+</html>

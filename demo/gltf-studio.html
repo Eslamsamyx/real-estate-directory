@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>glTF Studio · PlayCanvas</title>
+    <style>
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background: #08090e;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased; color: #e8eaf2;
+            user-select: none; -webkit-user-select: none; cursor: grab;
+        }
+        body.dragging { cursor: grabbing; }
+        #app { display: block; width: 100vw; height: 100vh; touch-action: none; }
+
+        .hud { position: fixed; pointer-events: none; z-index: 10; }
+        .hud--tl { top: 28px; left: 32px; }
+        .hud--bl { bottom: 24px; left: 32px; }
+        .hud--br { bottom: 24px; right: 32px; }
+        .hud--tr { top: 28px; right: 32px; pointer-events: auto; }
+
+        .title { font-size: 11px; font-weight: 600; letter-spacing: 0.45em; color: rgba(255,255,255,0.42); text-transform: uppercase; margin: 0 0 8px; }
+        .heading { font-size: 30px; font-weight: 200; letter-spacing: 0.18em; margin: 0; line-height: 1; color: rgba(255,255,255,0.95); text-shadow: 0 0 24px rgba(255,200,140,0.18); }
+        .heading b { font-weight: 400; color: rgba(255,210,160,1); }
+
+        .legend { display: flex; gap: 18px; font-size: 10.5px; letter-spacing: 0.32em; color: rgba(255,255,255,0.45); text-transform: uppercase; }
+        .legend span::before { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: rgba(255,210,160,0.85); margin-right: 9px; vertical-align: middle; box-shadow: 0 0 8px rgba(255,210,160,0.7); }
+
+        .stat { font-size: 10.5px; letter-spacing: 0.32em; color: rgba(255,255,255,0.42); text-transform: uppercase; font-variant-numeric: tabular-nums; text-align: right; }
+        .stat span { color: rgba(255,210,160,1); }
+
+        .panel {
+            display: flex; flex-direction: column; gap: 8px;
+            padding: 14px 16px;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            background: rgba(15,17,25,0.55);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            min-width: 200px;
+        }
+        .panel-title { font-size: 10px; letter-spacing: 0.32em; color: rgba(255,255,255,0.45); text-transform: uppercase; }
+        .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 11px; letter-spacing: 0.08em; color: rgba(255,255,255,0.85); text-transform: uppercase; }
+        .row label { font-size: 10.5px; letter-spacing: 0.18em; color: rgba(255,255,255,0.55); }
+        .row input[type="range"] { -webkit-appearance: none; appearance: none; width: 90px; height: 2px; background: rgba(255,255,255,0.18); border-radius: 2px; outline: none; }
+        .row input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 12px; height: 12px; border-radius: 50%; background: rgba(255,210,160,1); cursor: pointer; }
+        .toggle { width: 36px; height: 18px; border-radius: 999px; background: rgba(255,255,255,0.12); position: relative; cursor: pointer; transition: background 200ms; }
+        .toggle.on { background: rgba(255,170,80,0.6); }
+        .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left 180ms ease; }
+        .toggle.on::after { left: 20px; }
+
+        .splash { position: fixed; inset: 0; background: #08090e; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; z-index: 100; transition: opacity 600ms ease 200ms, visibility 0s linear 800ms; }
+        .splash.hidden { opacity: 0; visibility: hidden; }
+        .spinner { width: 30px; height: 30px; border: 1px solid rgba(255,255,255,0.1); border-top-color: rgba(255,210,160,0.9); border-radius: 50%; animation: spin 0.9s linear infinite; }
+        .splash-label { font-size: 10.5px; letter-spacing: 0.45em; color: rgba(255,255,255,0.4); text-transform: uppercase; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .vignette { position: fixed; inset: 0; pointer-events: none; z-index: 5; background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.55) 100%); }
+
+        .back-link {
+            position: fixed; top: 28px; right: 32px; z-index: 11;
+            font-size: 10.5px; letter-spacing: 0.32em; color: rgba(255,255,255,0.55); text-transform: uppercase;
+            text-decoration: none; padding: 8px 14px;
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 999px;
+            background: rgba(15,17,25,0.4);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .back-link:hover { color: #fff; border-color: rgba(255,255,255,0.25); }
+
+        @media (max-width: 640px) {
+            .heading { font-size: 22px; }
+            .hud--tl, .hud--bl, .hud--br { left: 18px; right: 18px; top: 18px; bottom: 18px; }
+            .hud--br { left: auto; }
+            .hud--tl, .hud--bl { right: auto; }
+            .legend { gap: 12px; flex-wrap: wrap; }
+            .panel { display: none; }
+        }
+    </style>
+    <script type="importmap">
+    {
+        "imports": { "playcanvas": "./vendor/playcanvas.mjs" }
+    }
+    </script>
+</head>
+<body>
+    <canvas id="app"></canvas>
+
+    <div class="splash" id="splash">
+        <div class="spinner"></div>
+        <div class="splash-label">Loading glTF · IBL · 1.6 MB</div>
+    </div>
+
+    <div class="vignette"></div>
+
+    <a class="back-link" href="./index.html">← GALLERY</a>
+
+    <div class="hud hud--tl">
+        <div class="title">PlayCanvas · glTF 2.0 + IBL</div>
+        <h1 class="heading">glTF <b>STUDIO</b></h1>
+    </div>
+
+    <div class="hud hud--bl">
+        <div class="legend">
+            <span>DRAG · ORBIT</span>
+            <span>SCROLL · ZOOM</span>
+        </div>
+    </div>
+
+    <div class="hud hud--br" style="pointer-events: auto;">
+        <div class="panel">
+            <div class="panel-title">Environment</div>
+            <div class="row">
+                <label>Skybox</label>
+                <div class="toggle" id="t-skybox"></div>
+            </div>
+            <div class="row">
+                <label>IBL</label>
+                <div class="toggle on" id="t-ibl"></div>
+            </div>
+            <div class="row">
+                <label>Exposure</label>
+                <input type="range" id="r-exp" min="0.2" max="2.5" step="0.05" value="1.0" />
+            </div>
+            <div class="row">
+                <label>Auto-rotate</label>
+                <div class="toggle on" id="t-rot"></div>
+            </div>
+            <div class="row" style="margin-top: 6px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06);">
+                <span class="stat"><span id="fps">--</span> FPS</span>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as pc from 'playcanvas';
+
+        const canvas = document.getElementById('app');
+        const splash = document.getElementById('splash');
+        const fpsEl = document.getElementById('fps');
+
+        const app = new pc.Application(canvas, {
+            mouse: new pc.Mouse(canvas),
+            touch: new pc.TouchDevice(canvas),
+            keyboard: new pc.Keyboard(window),
+            graphicsDeviceOptions: { antialias: true, powerPreference: 'high-performance' }
+        });
+
+        app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
+        app.setCanvasResolution(pc.RESOLUTION_AUTO);
+        window.addEventListener('resize', () => app.resizeCanvas());
+
+        // Camera
+        const camera = new pc.Entity('camera');
+        camera.addComponent('camera', {
+            clearColor: new pc.Color(0.03, 0.035, 0.05),
+            fov: 35,
+            nearClip: 0.05,
+            farClip: 200,
+            toneMapping: (typeof pc.TONEMAP_ACES !== 'undefined') ? pc.TONEMAP_ACES : undefined
+        });
+        app.root.addChild(camera);
+
+        // Fill light to make non-IBL look reasonable too
+        const fill = new pc.Entity('fill');
+        fill.addComponent('light', {
+            type: 'directional',
+            color: new pc.Color(1, 0.95, 0.85),
+            intensity: 0.5,
+            castShadows: false
+        });
+        fill.setEulerAngles(45, -30, 0);
+        app.root.addChild(fill);
+
+        // ----- Asset loading ---------------------------------------------------
+        const ENGINE = '../engine/examples/assets';
+
+        const helipad = new pc.Asset(
+            'helipad',
+            'texture',
+            { url: `${ENGINE}/cubemaps/helipad-env-atlas.png` },
+            { type: pc.TEXTURETYPE_RGBP, mipmaps: false }
+        );
+        const statue = new pc.Asset(
+            'statue',
+            'container',
+            { url: `${ENGINE}/models/statue.glb` }
+        );
+
+        const loader = new pc.AssetListLoader([helipad, statue], app.assets);
+
+        // Orbit state
+        const orbit = {
+            target: new pc.Vec3(0, 3.4, 0),
+            distance: 12,
+            yaw: 25,
+            pitch: 8,
+            yawCurrent: 25,
+            pitchCurrent: 8,
+            distanceCurrent: 12,
+            autoRotate: true
+        };
+
+        const applyCamera = () => {
+            const yaw = orbit.yawCurrent * pc.math.DEG_TO_RAD;
+            const pitch = orbit.pitchCurrent * pc.math.DEG_TO_RAD;
+            const cy = Math.cos(pitch) * orbit.distanceCurrent;
+            camera.setPosition(
+                orbit.target.x + Math.sin(yaw) * cy,
+                orbit.target.y + Math.sin(pitch) * orbit.distanceCurrent,
+                orbit.target.z + Math.cos(yaw) * cy
+            );
+            camera.lookAt(orbit.target.x, orbit.target.y, orbit.target.z);
+        };
+        applyCamera();
+
+        // ----- Drag input ------------------------------------------------------
+        const drag = { active: false, id: null, lastX: 0, lastY: 0 };
+        canvas.addEventListener('pointerdown', (e) => {
+            canvas.setPointerCapture(e.pointerId);
+            drag.active = true; drag.id = e.pointerId;
+            drag.lastX = e.clientX; drag.lastY = e.clientY;
+            document.body.classList.add('dragging');
+        });
+        canvas.addEventListener('pointermove', (e) => {
+            if (!drag.active || drag.id !== e.pointerId) return;
+            orbit.yaw -= (e.clientX - drag.lastX) * 0.35;
+            orbit.pitch += (e.clientY - drag.lastY) * 0.35;
+            orbit.pitch = Math.max(-25, Math.min(70, orbit.pitch));
+            drag.lastX = e.clientX; drag.lastY = e.clientY;
+            orbit.autoRotate = false;
+        });
+        const onUp = (e) => {
+            if (drag.id === e.pointerId) {
+                drag.active = false; drag.id = null;
+                document.body.classList.remove('dragging');
+            }
+        };
+        canvas.addEventListener('pointerup', onUp);
+        canvas.addEventListener('pointercancel', onUp);
+        canvas.addEventListener('wheel', (e) => {
+            orbit.distance += e.deltaY * 0.012;
+            orbit.distance = Math.max(3.5, Math.min(30, orbit.distance));
+            e.preventDefault();
+        }, { passive: false });
+
+        // ----- Controls --------------------------------------------------------
+        const tSkybox = document.getElementById('t-skybox');
+        const tIbl = document.getElementById('t-ibl');
+        const tRot = document.getElementById('t-rot');
+        const rExp = document.getElementById('r-exp');
+
+        let envAtlasResource = null;
+
+        const setSkybox = (on) => {
+            tSkybox.classList.toggle('on', on);
+            app.scene.skyboxIntensity = on ? 1.0 : 0.0;
+            // skyboxMip: 0 = sharp env, higher = blurred
+            app.scene.skyboxMip = on ? 1 : 0;
+            // Hide skybox entirely by clearing envAtlas binding
+            if (!on) {
+                camera.camera.clearColor = new pc.Color(0.03, 0.035, 0.05);
+            }
+        };
+
+        const setIbl = (on) => {
+            tIbl.classList.toggle('on', on);
+            app.scene.envAtlas = on ? envAtlasResource : null;
+        };
+
+        tSkybox.addEventListener('click', () => setSkybox(!tSkybox.classList.contains('on')));
+        tIbl.addEventListener('click', () => setIbl(!tIbl.classList.contains('on')));
+        tRot.addEventListener('click', () => {
+            const on = !tRot.classList.contains('on');
+            tRot.classList.toggle('on', on);
+            orbit.autoRotate = on;
+        });
+        rExp.addEventListener('input', () => {
+            app.scene.exposure = parseFloat(rExp.value);
+        });
+
+        // ----- Frame loop ------------------------------------------------------
+        let frameCount = 0, fpsAccum = 0, lastFpsTs = 0;
+
+        app.on('update', (dt) => {
+            if (orbit.autoRotate && !drag.active) orbit.yaw += dt * 8;
+
+            const damp = 1 - Math.pow(0.001, dt);
+            orbit.yawCurrent += (orbit.yaw - orbit.yawCurrent) * damp;
+            orbit.pitchCurrent += (orbit.pitch - orbit.pitchCurrent) * damp;
+            orbit.distanceCurrent += (orbit.distance - orbit.distanceCurrent) * damp;
+            applyCamera();
+
+            // FPS
+            frameCount++;
+            fpsAccum += dt;
+            const now = performance.now();
+            if (now - lastFpsTs > 500) {
+                if (fpsEl) fpsEl.textContent = String(Math.round(frameCount / fpsAccum)).padStart(2, '0');
+                frameCount = 0; fpsAccum = 0; lastFpsTs = now;
+            }
+        });
+
+        // ----- Boot ------------------------------------------------------------
+        loader.load((errors) => {
+            if (errors) {
+                console.error('Asset load errors:', errors);
+                splash.querySelector('.splash-label').textContent = 'Asset load error — see console';
+                return;
+            }
+
+            // Setup IBL
+            envAtlasResource = helipad.resource;
+            app.scene.envAtlas = envAtlasResource;
+            app.scene.exposure = 1.0;
+            app.scene.skyboxIntensity = 0.0; // start with skybox off, IBL on
+
+            // Instantiate model
+            const entity = statue.resource.instantiateRenderEntity({
+                receiveShadows: true,
+                castShadows: true
+            });
+            app.root.addChild(entity);
+
+            // Compute bounding box to frame the camera nicely
+            const aabb = new pc.BoundingBox();
+            const renders = entity.findComponents('render');
+            let initialised = false;
+            for (const r of renders) {
+                for (const mi of r.meshInstances) {
+                    if (!initialised) { aabb.copy(mi.aabb); initialised = true; }
+                    else aabb.add(mi.aabb);
+                }
+            }
+            if (initialised) {
+                const center = aabb.center;
+                const radius = aabb.halfExtents.length();
+                orbit.target.copy(center);
+                orbit.distance = radius * 3.0;
+                orbit.distanceCurrent = orbit.distance;
+                applyCamera();
+            }
+
+            requestAnimationFrame(() => splash.classList.add('hidden'));
+        });
+
+        app.start();
+
+        window.addEventListener('error', (e) => console.error('[gltf-studio]', e.message, e.error));
+    </script>
+</body>
+</html>
