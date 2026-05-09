@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Listing · Domus</title>
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./vendor/leaflet.css" />
+    <script src="./vendor/leaflet.js" defer></script>
+    <style>
+        .photo-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 8px; height: 460px; border-radius: var(--radius-card); overflow: hidden; margin-top: 24px; }
+        .photo-grid > div { background: var(--surface-2); }
+        .photo-grid > div:nth-child(1) { grid-row: 1 / span 2; }
+        .meta-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin: 28px 0 6px; }
+        .meta-row h1 { margin: 0 0 6px; font-size: 30px; font-weight: 700; letter-spacing: -0.01em; }
+        .meta-row .addr { color: var(--text-2); font-size: 15px; }
+        .meta-row .price-block { text-align: right; flex-shrink: 0; }
+        .meta-row .price-big { font-size: 28px; font-weight: 700; color: var(--text); }
+        .meta-row .price-sub { color: var(--text-2); font-size: 13.5px; margin-top: 4px; }
+        .tour-hero-cta { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; padding: 12px 22px; border: 0; border-radius: var(--radius-chip); background: var(--accent); color: white; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 140ms; }
+        .tour-hero-cta:hover { background: var(--accent-2); }
+        .tour-hero-cta::before { content: "★"; }
+        .stat-row { display: flex; gap: 32px; padding: 22px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin: 24px 0 28px; flex-wrap: wrap; }
+        .stat-row .stat { display: flex; flex-direction: column; gap: 4px; min-width: 80px; }
+        .stat-row .stat .v { font-weight: 600; font-size: 18px; }
+        .stat-row .stat .k { color: var(--text-2); font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase; }
+        .layout-2col { display: grid; grid-template-columns: 1fr 360px; gap: 48px; align-items: start; }
+        .layout-2col .body h2 { font-size: 20px; font-weight: 600; margin: 0 0 12px; }
+        .layout-2col .body p { color: var(--text-2); font-size: 15px; line-height: 1.65; margin: 0 0 28px; }
+        .layout-2col .body .extra { color: var(--text-2); font-size: 14px; margin: 0 0 28px; }
+        .feat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 22px; margin: 0 0 28px; }
+        .feat-grid .feat { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--text); }
+        .feat-grid .feat::before { content: "✓"; color: var(--accent); font-weight: 700; flex-shrink: 0; }
+        #neighborhood-map { width: 100%; height: 280px; border-radius: var(--radius-card); border: 1px solid var(--border); overflow: hidden; background: var(--surface-2); }
+        .map-pin { background: white; color: var(--text); font-weight: 700; font-size: 13px; padding: 6px 10px; border-radius: var(--radius-chip); border: 1px solid var(--border); box-shadow: var(--shadow-md); white-space: nowrap; cursor: pointer; }
+        .map-pin.has-tour { background: var(--accent); color: white; border-color: var(--accent); }
+        .layout-2col .side { display: flex; flex-direction: column; gap: 16px; }
+        .calc-card, .agent-card { position: sticky; top: 84px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 22px; box-shadow: var(--shadow-sm); }
+        .calc-card h3, .agent-card h3 { margin: 0 0 14px; font-size: 16px; font-weight: 600; }
+        .calc-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+        .calc-row label { font-size: 13px; color: var(--text-2); flex: 1; }
+        .calc-row input { width: 110px; padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-input); font-family: inherit; font-size: 13px; text-align: right; background: var(--surface); color: var(--text); }
+        .calc-result { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); display: flex; align-items: baseline; justify-content: space-between; }
+        .calc-result .label { color: var(--text-2); font-size: 13px; }
+        .calc-result .value { font-size: 22px; font-weight: 700; color: var(--text); }
+        .agent-card .agent-row { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+        .agent-card .agent-photo { width: 56px; height: 56px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 18px; letter-spacing: 0.02em; flex-shrink: 0; }
+        .agent-card .agent-name { font-weight: 600; font-size: 15px; }
+        .agent-card .agent-role { font-size: 12.5px; color: var(--text-2); margin-top: 2px; }
+        .agent-card .agent-cta { display: block; text-align: center; padding: 11px 18px; background: var(--accent); color: white; border-radius: var(--radius-chip); font-weight: 600; font-size: 14px; transition: background 140ms; }
+        .agent-card .agent-cta:hover { background: var(--accent-2); }
+        @media (max-width: 880px) {
+            .photo-grid { height: 300px; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+            .photo-grid > div:nth-child(1) { grid-column: 1 / span 2; grid-row: 1; }
+            .photo-grid > div:nth-child(4), .photo-grid > div:nth-child(5) { display: none; }
+            .meta-row { flex-direction: column; gap: 6px; }
+            .meta-row .price-block { text-align: left; }
+            .layout-2col { grid-template-columns: 1fr; gap: 32px; }
+            .calc-card, .agent-card { position: static; }
+            .feat-grid { grid-template-columns: 1fr; }
+            .stat-row { gap: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="topnav" id="topnav"></nav>
+    <main class="container" id="content"></main>
+    <div class="spacer"></div>
+    <footer class="foot" id="foot"></footer>
+    <script type="module">
+        import { LISTINGS, findListing } from './data/listings.js';
+        import { mountNav, mountFooter } from './lib/nav.js';
+        import { fmtPrice, fmtPriceFull, fmtSqft, fmtDaysAgo, fmtMonthly, fmtCityState } from './lib/format.js';
+        import { buildCard } from './lib/card.js';
+        import { pushRecent, getMortgage, setMortgage } from './lib/store.js';
+        import { el } from './lib/dom.js';
+
+        mountNav('listing');
+        mountFooter();
+
+        const params = new URLSearchParams(location.search);
+        const id = params.get('id') || 'L001';
+        const listing = findListing(id);
+        const content = document.getElementById('content');
+
+        if (!listing) {
+            const empty = el('div', { cls: 'empty' });
+            empty.appendChild(el('h3', { text: 'Listing not found' }));
+            empty.appendChild(el('p', { text: 'That listing may have been removed or the link is incorrect.' }));
+            empty.appendChild(el('a', { cls: 'btn btn-primary', text: 'Browse listings', attrs: { href: './index.html' } }));
+            content.appendChild(empty);
+        } else {
+            renderListing(listing);
+        }
+
+        function renderListing(l) {
+            document.title = l.title + ' · Domus';
+            pushRecent(l.id);
+
+            // 1. Photo grid (one large + 4 small)
+            const grid = el('div', { cls: 'photo-grid' });
+            const baseColor = l.heroColor || 'linear-gradient(135deg, #e0e0e0, #c0c0c0)';
+            const steps = [1, 0.92, 1.06, 0.86, 1.12];
+            for (const s of steps) {
+                const tile = el('div');
+                tile.style.background = baseColor;
+                tile.style.filter = 'brightness(' + s + ')';
+                grid.appendChild(tile);
+            }
+            content.appendChild(grid);
+
+            // 2. Meta row
+            const metaRow = el('div', { cls: 'meta-row' });
+            const left = el('div');
+            left.appendChild(el('h1', { text: l.title }));
+            left.appendChild(el('div', { cls: 'addr', text: l.address.line1 + ', ' + fmtCityState(l) }));
+            metaRow.appendChild(left);
+
+            const priceBlock = el('div', { cls: 'price-block' });
+            priceBlock.appendChild(el('div', { cls: 'price-big', text: fmtPriceFull(l.price) }));
+            const perSqft = (l.sqft && l.price) ? '$' + Math.round(l.price / l.sqft).toLocaleString('en-US') + '/sqft' : '';
+            const subText = (perSqft ? perSqft + ' · ' : '') + fmtDaysAgo(l.daysOnMarket);
+            priceBlock.appendChild(el('div', { cls: 'price-sub', text: subText }));
+            metaRow.appendChild(priceBlock);
+            content.appendChild(metaRow);
+
+            // 3. View 3D tour CTA (only if listing has tour3d)
+            if (l.tour3d) {
+                const cta = el('button', { cls: 'tour-hero-cta', text: 'View 3D tour', attrs: { id: 'tour-cta', type: 'button' } });
+                cta.addEventListener('click', () => {
+                    alert('3D tour modal — coming next task');
+                });
+                content.appendChild(cta);
+            }
+
+            // 4. Stat row
+            const stat = el('div', { cls: 'stat-row' });
+            stat.appendChild(buildStat(String(l.beds ?? '—'), 'beds'));
+            stat.appendChild(buildStat(String(l.baths ?? '—'), 'baths'));
+            stat.appendChild(buildStat(l.sqft ? Number(l.sqft).toLocaleString('en-US') : '—', 'sqft'));
+            stat.appendChild(buildStat(String(l.yearBuilt ?? '—'), 'year built'));
+            stat.appendChild(buildStat(String(l.type ?? '—'), 'type'));
+            content.appendChild(stat);
+
+            // 5. Two-column layout: body + sidebar
+            const cols = el('div', { cls: 'layout-2col' });
+            const body = el('div', { cls: 'body' });
+            const side = el('div', { cls: 'side' });
+
+            // Body — Description
+            body.appendChild(el('h2', { text: 'About this home' }));
+            body.appendChild(el('p', { text: l.description || '' }));
+
+            // Body — Features
+            if (l.features && l.features.length) {
+                body.appendChild(el('h2', { text: 'Features' }));
+                const fg = el('div', { cls: 'feat-grid' });
+                for (const f of l.features) {
+                    fg.appendChild(el('div', { cls: 'feat', text: f }));
+                }
+                body.appendChild(fg);
+            }
+
+            // Body — HOA / lot
+            const hoa = (typeof l.hoaMonthly === 'number' && l.hoaMonthly > 0)
+                ? '$' + l.hoaMonthly.toLocaleString('en-US') + '/mo HOA'
+                : 'No HOA';
+            const lot = (typeof l.lotSqft === 'number' && l.lotSqft > 0)
+                ? l.lotSqft.toLocaleString('en-US') + ' sqft lot'
+                : 'No private lot';
+            body.appendChild(el('div', { cls: 'extra', text: hoa + ' · ' + lot }));
+
+            // Body — Neighborhood map
+            body.appendChild(el('h2', { text: 'Neighborhood' }));
+            const mapEl = el('div', { attrs: { id: 'neighborhood-map' } });
+            body.appendChild(mapEl);
+
+            cols.appendChild(body);
+            cols.appendChild(side);
+            content.appendChild(cols);
+
+            // 6. Mortgage calculator (sidebar)
+            side.appendChild(buildCalc(l));
+
+            // 7. Agent card (sidebar)
+            side.appendChild(buildAgent(l));
+
+            // 8. Initialize neighborhood Leaflet map
+            const startMap = () => initNeighborhoodMap(l);
+            if (window.L) startMap(); else window.addEventListener('load', startMap);
+
+            // 9. Similar listings carousel
+            const similar = LISTINGS.filter(x => x.id !== l.id && x.type === l.type).slice(0, 4);
+            if (similar.length) {
+                const sectionHead = el('div', { cls: 'section-h' });
+                sectionHead.appendChild(el('h2', { text: 'Similar listings' }));
+                content.appendChild(sectionHead);
+                const simGrid = el('div', { cls: 'grid-listings' });
+                for (const s of similar) simGrid.appendChild(buildCard(s));
+                content.appendChild(simGrid);
+            }
+        }
+
+        function buildStat(value, label) {
+            const s = el('div', { cls: 'stat' });
+            s.appendChild(el('div', { cls: 'v', text: value }));
+            s.appendChild(el('div', { cls: 'k', text: label }));
+            return s;
+        }
+
+        function buildCalc(l) {
+            const card = el('div', { cls: 'calc-card' });
+            card.appendChild(el('h3', { text: 'Mortgage calculator' }));
+
+            const stored = getMortgage();
+
+            const priceInput = el('input', { attrs: { id: 'm-price', type: 'number', min: '0', step: '1000', value: String(l.price) } });
+            const downInput = el('input', { attrs: { id: 'm-down', type: 'number', min: '0', max: '100', step: '1', value: String(stored.down) } });
+            const rateInput = el('input', { attrs: { id: 'm-rate', type: 'number', min: '0', max: '20', step: '0.05', value: String(stored.rate) } });
+            const termInput = el('input', { attrs: { id: 'm-term', type: 'number', min: '5', max: '40', step: '1', value: String(stored.term) } });
+
+            card.appendChild(buildCalcRow('Home price', priceInput));
+            card.appendChild(buildCalcRow('Down payment %', downInput));
+            card.appendChild(buildCalcRow('Interest rate %', rateInput));
+            card.appendChild(buildCalcRow('Loan term (yr)', termInput));
+
+            const result = el('div', { cls: 'calc-result' });
+            result.appendChild(el('div', { cls: 'label', text: 'Estimated monthly' }));
+            const valueEl = el('div', { cls: 'value', text: '—' });
+            result.appendChild(valueEl);
+            card.appendChild(result);
+
+            const recalc = () => {
+                const price = Number(priceInput.value) || 0;
+                const down = Number(downInput.value) || 0;
+                const rate = Number(rateInput.value) || 0;
+                const term = Number(termInput.value) || 0;
+                const principal = price * (1 - down / 100);
+                const n = term * 12;
+                const r = (rate / 100) / 12;
+                let monthly = 0;
+                if (principal > 0 && n > 0) {
+                    monthly = (r === 0)
+                        ? principal / n
+                        : principal * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1);
+                }
+                valueEl.textContent = fmtMonthly(monthly);
+                setMortgage({ down, rate, term });
+            };
+
+            for (const inp of [priceInput, downInput, rateInput, termInput]) {
+                inp.addEventListener('input', recalc);
+            }
+            recalc();
+
+            return card;
+        }
+
+        function buildCalcRow(labelText, inputEl) {
+            const row = el('div', { cls: 'calc-row' });
+            const lbl = el('label', { text: labelText, attrs: { for: inputEl.id } });
+            row.appendChild(lbl);
+            row.appendChild(inputEl);
+            return row;
+        }
+
+        function buildAgent(l) {
+            const card = el('div', { cls: 'agent-card' });
+            card.appendChild(el('h3', { text: 'Listing agent' }));
+
+            const row = el('div', { cls: 'agent-row' });
+            const initials = (l.agent?.name || '?')
+                .split(/\s+/)
+                .filter(Boolean)
+                .map(w => w[0])
+                .slice(0, 2)
+                .join('')
+                .toUpperCase();
+            const photo = el('div', { cls: 'agent-photo', text: initials });
+            photo.style.background = l.agent?.photoColor || 'var(--accent)';
+            row.appendChild(photo);
+
+            const info = el('div');
+            info.appendChild(el('div', { cls: 'agent-name', text: l.agent?.name || '—' }));
+            info.appendChild(el('div', { cls: 'agent-role', text: 'Domus listing agent' }));
+            row.appendChild(info);
+            card.appendChild(row);
+
+            const ctaLink = el('a', {
+                cls: 'agent-cta',
+                text: 'Send message',
+                attrs: { href: './contact.html?id=' + l.id }
+            });
+            card.appendChild(ctaLink);
+            return card;
+        }
+
+        function initNeighborhoodMap(l) {
+            if (!window.L) return;
+            const map = L.map('neighborhood-map', {
+                zoomControl: true,
+                attributionControl: true,
+                scrollWheelZoom: false
+            }).setView([l.lat, l.lng], 14);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+
+            const pin = el('div', { text: fmtPrice(l.price) });
+            pin.className = 'map-pin' + (l.tour3d ? ' has-tour' : '');
+            const icon = L.divIcon({ className: '', html: pin, iconSize: [60, 28], iconAnchor: [30, 28] });
+            L.marker([l.lat, l.lng], { icon }).addTo(map);
+        }
+    </script>
+</body>
+</html>
