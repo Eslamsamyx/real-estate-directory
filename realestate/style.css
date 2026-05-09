@@ -158,7 +158,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 }
 .tour-joy-base {
     position: absolute;
-    bottom: 28px; left: 28px;
+    /* env() lifts the joystick above iOS Safari's home-indicator / tab bar.
+       On platforms with no safe-area (Android, desktop), the env() fallback
+       is 0px so this collapses to bottom: 28px. */
+    bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+    left: calc(28px + env(safe-area-inset-left, 0px));
     width: 110px; height: 110px;
     border-radius: 50%;
     border: 2px solid rgba(255,255,255,0.28);
@@ -201,8 +205,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
     display: flex; align-items: center; justify-content: center;
     line-height: 1;
 }
-.tour-vert-chip.up { bottom: 110px; right: 28px; }
-.tour-vert-chip.down { bottom: 28px; right: 28px; }
+.tour-vert-chip.up   { bottom: calc(110px + env(safe-area-inset-bottom, 0px)); right: calc(28px + env(safe-area-inset-right, 0px)); }
+.tour-vert-chip.down { bottom: calc(28px  + env(safe-area-inset-bottom, 0px)); right: calc(28px + env(safe-area-inset-right, 0px)); }
 .tour-vert-chip.active {
     background: var(--accent);
     border-color: var(--accent);
