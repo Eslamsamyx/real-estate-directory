@@ -113,3 +113,15 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .tour-splash-label { font-size: 10.5px; letter-spacing: 0.4em; color: rgba(255,255,255,0.55); text-transform: uppercase; }
 @keyframes tour-spin { to { transform: rotate(360deg); } }
 @media (max-width: 720px) { .tour-modal { grid-template-rows: 56px 1fr auto; grid-template-columns: 1fr; grid-template-areas: "head" "stage" "aside"; } .tour-aside { max-height: 40vh; } .tour-tabs { font-size: 12px; } }
+
+/* ---------- Configurator side panel ---------- */
+.cfg-head { padding: 22px 22px 4px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.cfg-head h3 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
+.cfg-head .cfg-sub { margin: 0 0 18px; font-size: 12.5px; color: rgba(255,255,255,0.55); }
+.cfg-section { padding: 18px 22px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.cfg-label { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.55); margin-bottom: 10px; }
+.cfg-swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.cfg-swatch { position: relative; width: 64px; height: 64px; border-radius: 10px; cursor: pointer; border: 2px solid rgba(255,255,255,0.1); overflow: hidden; padding: 0; transition: transform 120ms, border-color 140ms; }
+.cfg-swatch:hover { transform: scale(1.04); }
+.cfg-swatch.on { border-color: var(--accent); }
+.cfg-swatch-label { position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 6px; font-size: 9px; font-weight: 600; letter-spacing: 0.04em; color: rgba(255,255,255,0.95); background: linear-gradient(180deg, transparent, rgba(0,0,0,0.6)); }
