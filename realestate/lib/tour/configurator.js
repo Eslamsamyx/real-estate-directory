@@ -270,10 +270,15 @@ export async function start({ canvas, listing, aside, hotspotsOn }) {
     resetSection.appendChild(resetBtn);
     aside.appendChild(resetSection);
 
+    // Hotspots layer
+    const { HOTSPOTS } = await import('../../data/hotspots.js');
+    const { createHotspotsLayer } = await import('./hotspots.js');
+    const hsLayer = createHotspotsLayer({ canvas, camera, hotspots: HOTSPOTS, enabled: hotspotsOn });
+
     app.start();
 
     return {
-        setHotspotsEnabled(_) { /* no-op until Task 19 */ },
+        setHotspotsEnabled(on) { hsLayer.setEnabled(on); },
         destroy() {
             try {
                 window.removeEventListener('resize', onResize);
@@ -282,6 +287,7 @@ export async function start({ canvas, listing, aside, hotspotsOn }) {
                 canvas.removeEventListener('pointerup', onUp);
                 canvas.removeEventListener('pointercancel', onUp);
                 aside.replaceChildren();
+                hsLayer.destroy();
                 app.destroy();
             } catch (err) {
                 console.error('[configurator] destroy error', err);

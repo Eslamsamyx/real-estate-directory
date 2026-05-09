@@ -125,3 +125,12 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .cfg-swatch:hover { transform: scale(1.04); }
 .cfg-swatch.on { border-color: var(--accent); }
 .cfg-swatch-label { position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 6px; font-size: 9px; font-weight: 600; letter-spacing: 0.04em; color: rgba(255,255,255,0.95); background: linear-gradient(180deg, transparent, rgba(0,0,0,0.6)); }
+
+/* ---------- Hotspots overlay ---------- */
+.hotspots-layer .hotspot { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; }
+.hs-dot { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: white; border: 2px solid white; font-weight: 700; font-size: 13px; cursor: pointer; box-shadow: var(--shadow-md); transition: transform 120ms; }
+.hs-dot:hover { transform: scale(1.1); }
+.hs-card { position: absolute; left: 22px; top: 22px; width: 240px; padding: 12px 14px; background: white; color: var(--text); border-radius: 10px; box-shadow: var(--shadow-lg); opacity: 0; pointer-events: none; transform: translateY(4px); transition: opacity 160ms, transform 160ms; }
+.hotspot:hover .hs-card, .hotspot.pinned .hs-card { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.hs-title { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+.hs-body { margin: 0; font-size: 12.5px; color: var(--text-2); }

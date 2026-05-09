@@ -211,10 +211,16 @@ export async function start({ canvas, listing, hotspotsOn }) {
         } catch (_) {}
     }
 
+    // Hotspots layer — splat is rotated 180° on X, flip y/z to match
+    const { HOTSPOTS } = await import('../../data/hotspots.js');
+    const { createHotspotsLayer } = await import('./hotspots.js');
+    const flipped = HOTSPOTS.map(h => ({ ...h, world: [h.world[0], -h.world[1], -h.world[2]] }));
+    const hsLayer = createHotspotsLayer({ canvas, camera, hotspots: flipped, enabled: hotspotsOn });
+
     app.start();
 
     return {
-        setHotspotsEnabled(_) { /* no-op until Task 19 */ },
+        setHotspotsEnabled(on) { hsLayer.setEnabled(on); },
         destroy() {
             try {
                 if (document.pointerLockElement === canvas) document.exitPointerLock();
@@ -231,6 +237,7 @@ export async function start({ canvas, listing, hotspotsOn }) {
                     canvas.removeEventListener('touchend', onTouchEnd);
                     canvas.removeEventListener('touchcancel', onTouchEnd);
                 }
+                hsLayer.destroy();
                 app.destroy();
             } catch (err) {
                 console.error('[walkthrough] destroy error', err);
