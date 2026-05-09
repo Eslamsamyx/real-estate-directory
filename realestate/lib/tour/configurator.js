@@ -288,9 +288,10 @@ export async function start({ canvas, listing, aside, hotspotsOn }) {
                 canvas.removeEventListener('pointercancel', onUp);
                 aside.replaceChildren();
                 hsLayer.destroy();
-                app.destroy();
             } catch (err) {
-                console.error('[configurator] destroy error', err);
+                console.warn('[configurator] teardown', err);
+            } finally {
+                try { app.destroy(); } catch (err) { console.warn('[configurator] app.destroy', err); }
             }
         }
     };

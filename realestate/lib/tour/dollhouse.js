@@ -203,9 +203,10 @@ export async function start({ canvas, listing, hotspotsOn }) {
                 canvas.removeEventListener('pointercancel', onUp);
                 canvas.removeEventListener('wheel', onWheel);
                 hsLayer.destroy();
-                app.destroy();
             } catch (err) {
-                console.error('[dollhouse] destroy error', err);
+                console.warn('[dollhouse] teardown', err);
+            } finally {
+                try { app.destroy(); } catch (err) { console.warn('[dollhouse] app.destroy', err); }
             }
         }
     };

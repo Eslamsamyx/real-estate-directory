@@ -244,9 +244,10 @@ export async function start({ canvas, listing, hotspotsOn }) {
                     canvas.removeEventListener('touchcancel', onTouchEnd);
                 }
                 hsLayer.destroy();
-                app.destroy();
             } catch (err) {
-                console.error('[walkthrough] destroy error', err);
+                console.warn('[walkthrough] teardown', err);
+            } finally {
+                try { app.destroy(); } catch (err) { console.warn('[walkthrough] app.destroy', err); }
             }
         }
     };
