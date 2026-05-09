@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Contact · Domus</title>
+    <link rel="stylesheet" href="./style.css" />
+    <style>
+        .form-card { max-width: 640px; margin: 32px auto 24px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 28px; box-shadow: var(--shadow-sm); }
+        .form-card h1 { font-size: 24px; font-weight: 700; margin: 0 0 6px; letter-spacing: -0.01em; }
+        .form-card .lede { color: var(--text-2); font-size: 14px; margin: 0 0 22px; }
+        .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+        .field label { font-size: 13px; font-weight: 600; color: var(--text); }
+        .field input, .field select, .field textarea { font-family: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-input); background: var(--surface); color: var(--text); outline: none; transition: border-color 140ms; }
+        .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+        .field textarea { resize: vertical; min-height: 110px; }
+        .submit-row { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 8px; }
+        .success { background: rgba(255, 56, 92, 0.08); border: 1px solid rgba(255, 56, 92, 0.18); color: var(--text); padding: 14px 18px; border-radius: var(--radius-input); font-size: 14px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+        .success::before { content: "✓"; color: var(--accent); font-weight: 700; }
+        .form-card .success-body p { color: var(--text-2); font-size: 14px; margin: 0 0 16px; line-height: 1.55; }
+        .form-card .success-body a.btn { margin-top: 4px; }
+        .recent-section { max-width: 640px; margin: 12px auto 0; }
+        .recent-section h2 { font-size: 16px; font-weight: 600; margin: 0 0 12px; color: var(--text); }
+        .recent-list { display: flex; flex-direction: column; gap: 8px; list-style: none; padding: 0; margin: 0; }
+        .recent-row { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-input); padding: 10px 14px; font-size: 13px; color: var(--text-2); }
+        .recent-row b { color: var(--text); font-weight: 600; }
+        .recent-row .sep { color: var(--text-muted); margin: 0 6px; }
+    </style>
+</head>
+<body>
+    <nav class="topnav" id="topnav"></nav>
+    <main class="container">
+        <div class="form-card" id="form-card"></div>
+        <section class="recent-section" id="recent-section" hidden>
+            <h2>Recent inquiries</h2>
+            <ul class="recent-list" id="recent-list"></ul>
+        </section>
+    </main>
+    <div class="spacer"></div>
+    <footer class="foot" id="foot"></footer>
+    <script type="module">
+        import { findListing } from './data/listings.js';
+        import { mountNav, mountFooter } from './lib/nav.js';
+        import {
+            getContactDraft, setContactDraft, clearContactDraft,
+            pushSubmission, getSubmissions
+        } from './lib/store.js';
+        import { el } from './lib/dom.js';
+
+        mountNav();
+        mountFooter();
+
+        const params = new URLSearchParams(location.search);
+        const listingId = params.get('id');
+        const listing = listingId ? findListing(listingId) : null;
+
+        const card = document.getElementById('form-card');
+        const recentSection = document.getElementById('recent-section');
+        const recentList = document.getElementById('recent-list');
+
+        const TIMES = ['Anytime', 'Morning', 'Afternoon', 'Evening', 'Weekends only'];
+
+        function buildField(labelText, control) {
+            const wrap = el('div', { cls: 'field' });
+            const id = control.getAttribute('name') ? 'cf-' + control.getAttribute('name') : null;
+            if (id) control.setAttribute('id', id);
+            const lbl = el('label', { text: labelText });
+            if (id) lbl.setAttribute('for', id);
+            wrap.appendChild(lbl);
+            wrap.appendChild(control);
+            return wrap;
+        }
+
+        function buildForm() {
+            const draft = getContactDraft() || {};
+
+            const heading = el('h1', { text: listing ? 'Ask about ' + listing.title : 'Talk to a Domus agent' });
+            const lede = el('p', {
+                cls: 'lede',
+                text: listing
+                    ? listing.address.line1 + ' · we usually reply within a business day.'
+                    : 'Tell us about the home you want and we will route your note to the right agent.'
+            });
+
+            const form = el('form', { attrs: { novalidate: 'true', autocomplete: 'on' } });
+
+            const nameInput = el('input', {
+                attrs: { name: 'name', type: 'text', required: 'true', placeholder: 'Jane Doe' }
+            });
+            if (draft.name) nameInput.value = draft.name;
+
+            const emailInput = el('input', {
+                attrs: { name: 'email', type: 'email', required: 'true', placeholder: 'you@example.com' }
+            });
+            if (draft.email) emailInput.value = draft.email;
+
+            const phoneInput = el('input', {
+                attrs: { name: 'phone', type: 'tel', placeholder: '(555) 123-4567' }
+            });
+            if (draft.phone) phoneInput.value = draft.phone;
+
+            const bestTime = el('select', { attrs: { name: 'bestTime' } });
+            for (const t of TIMES) {
+                const opt = el('option', { text: t, attrs: { value: t } });
+                bestTime.appendChild(opt);
+            }
+            if (draft.bestTime && TIMES.includes(draft.bestTime)) bestTime.value = draft.bestTime;
+
+            const messagePlaceholder = listing
+                ? 'I would like to schedule a viewing of ' + listing.title + '.'
+                : 'Tell us what you are looking for — neighborhood, beds, budget, timeline.';
+            const messageInput = el('textarea', {
+                attrs: { name: 'message', rows: '5', placeholder: messagePlaceholder }
+            });
+            if (draft.message) messageInput.value = draft.message;
+
+            form.appendChild(buildField('Your name', nameInput));
+            form.appendChild(buildField('Email', emailInput));
+            form.appendChild(buildField('Phone (optional)', phoneInput));
+            form.appendChild(buildField('Best time to contact', bestTime));
+            form.appendChild(buildField('Message', messageInput));
+
+            const submit = el('button', {
+                cls: 'btn btn-primary',
+                text: 'Send message',
+                attrs: { type: 'submit' }
+            });
+            const submitRow = el('div', { cls: 'submit-row' }, [submit]);
+            form.appendChild(submitRow);
+
+            // Live draft persistence
+            form.addEventListener('input', () => {
+                const fd = new FormData(form);
+                const draftObj = {};
+                for (const [k, v] of fd.entries()) draftObj[k] = v;
+                setContactDraft(draftObj);
+            });
+
+            // Submit handler
+            form.addEventListener('submit', (ev) => {
+                ev.preventDefault();
+                const fd = new FormData(form);
+                const data = {};
+                for (const [k, v] of fd.entries()) data[k] = v;
+                if (listing) data.propertyRef = listing.title + ' (' + listing.id + ')';
+                pushSubmission(data);
+                clearContactDraft();
+                form.reset();
+                renderSuccess(data);
+                renderRecent();
+            });
+
+            card.replaceChildren(heading, lede, form);
+        }
+
+        function renderSuccess(data) {
+            const banner = el('div', { cls: 'success', text: 'Message sent' });
+            const body = el('div', { cls: 'success-body' });
+            const greeting = el('p', { text: 'Thanks, ' + (data.name || 'there') + '! An agent will reach out shortly.' });
+            body.appendChild(greeting);
+            if (data.propertyRef) {
+                body.appendChild(el('p', { text: 'About: ' + data.propertyRef }));
+            }
+            body.appendChild(el('a', {
+                cls: 'btn btn-primary',
+                text: 'Browse more homes',
+                attrs: { href: './index.html' }
+            }));
+            card.replaceChildren(banner, body);
+        }
+
+        function renderRecent() {
+            const submissions = getSubmissions().slice(0, 5);
+            recentList.replaceChildren();
+            if (submissions.length === 0) {
+                recentSection.setAttribute('hidden', '');
+                return;
+            }
+            recentSection.removeAttribute('hidden');
+            for (const s of submissions) {
+                const row = el('li', { cls: 'recent-row' });
+                row.appendChild(el('b', { text: s.name || '—' }));
+                row.appendChild(document.createTextNode(' '));
+                row.appendChild(el('span', { cls: 'sep', text: '·' }));
+                row.appendChild(document.createTextNode(' '));
+                row.appendChild(document.createTextNode(s.propertyRef || 'General inquiry'));
+                row.appendChild(document.createTextNode(' '));
+                row.appendChild(el('span', { cls: 'sep', text: '·' }));
+                row.appendChild(document.createTextNode(' '));
+                row.appendChild(document.createTextNode(new Date(s.ts).toLocaleString()));
+                recentList.appendChild(row);
+            }
+        }
+
+        buildForm();
+        renderRecent();
+    </script>
+</body>
+</html>
