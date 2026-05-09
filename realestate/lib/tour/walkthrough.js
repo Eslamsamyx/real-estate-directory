@@ -226,7 +226,7 @@ export async function start({ canvas, listing, hotspotsOn }) {
             }
         }
     };
-    if (isTouch) {
+    if (_isTouchUI) {
         canvas.addEventListener('touchstart', onTouchStart, { passive: false });
         canvas.addEventListener('touchmove', onTouchMove, { passive: false });
         canvas.addEventListener('touchend', onTouchEnd, { passive: false });
@@ -323,7 +323,7 @@ export async function start({ canvas, listing, hotspotsOn }) {
                 window.removeEventListener('keydown', onKeyDown);
                 window.removeEventListener('keyup', onKeyUp);
                 window.removeEventListener('blur', onBlur);
-                if (isTouch) {
+                if (_isTouchUI) {
                     canvas.removeEventListener('touchstart', onTouchStart);
                     canvas.removeEventListener('touchmove', onTouchMove);
                     canvas.removeEventListener('touchend', onTouchEnd);
