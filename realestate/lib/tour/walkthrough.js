@@ -106,11 +106,81 @@ export async function start({ canvas, listing, hotspotsOn }) {
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('blur', onBlur);
 
-    // Touch joystick: left half = move, right half = look
+    // Touch joystick: left half = move, right half = look. Joystick base + thumb
+    // and vertical (▲/▼) chips are rendered on-screen when on a touch device so
+    // the controls are discoverable without an instruction modal. Append
+    // `?touch=1` to the URL to force the on-screen controls on desktop too —
+    // useful for design QA and client demos on a laptop.
+    const _forceTouch = new URLSearchParams(location.search).get('touch') === '1';
+    const _isTouchUI = isTouch || _forceTouch;
     const move = { active: false, id: null, x: 0, y: 0, baseX: 0, baseY: 0 };
     const look = { active: false, id: null, lastX: 0, lastY: 0 };
+    let mobileVertical = 0;       // -1, 0, or +1 (driven by ▲/▼ chips)
+    let mobileSprintMul = 1.0;    // 1.0 normal, ramps to 2.5 at edge of joystick
+    const SPRINT_THRESHOLD = 0.85; // |move| at which sprint engages
+
+    // On-screen mobile UI (joystick + chips). Lives inside the canvas's parent
+    // (.tour-stage) so it disappears with the modal.
+    let mobileUI = null;
+    if (_isTouchUI) {
+        const stage = canvas.parentElement;
+        mobileUI = {
+            root: document.createElement('div'),
+            joyBase: document.createElement('div'),
+            joyThumb: document.createElement('div'),
+            upBtn: document.createElement('button'),
+            downBtn: document.createElement('button')
+        };
+        mobileUI.root.className = 'tour-mobile-controls';
+        mobileUI.joyBase.className = 'tour-joy-base';
+        mobileUI.joyThumb.className = 'tour-joy-thumb';
+        mobileUI.upBtn.className = 'tour-vert-chip up';
+        mobileUI.upBtn.type = 'button';
+        mobileUI.upBtn.textContent = '▲';
+        mobileUI.upBtn.setAttribute('aria-label', 'Move up');
+        mobileUI.downBtn.className = 'tour-vert-chip down';
+        mobileUI.downBtn.type = 'button';
+        mobileUI.downBtn.textContent = '▼';
+        mobileUI.downBtn.setAttribute('aria-label', 'Move down');
+        mobileUI.joyBase.appendChild(mobileUI.joyThumb);
+        mobileUI.root.appendChild(mobileUI.joyBase);
+        mobileUI.root.appendChild(mobileUI.upBtn);
+        mobileUI.root.appendChild(mobileUI.downBtn);
+        stage.appendChild(mobileUI.root);
+
+        const holdHandler = (el, sign) => {
+            const press = (e) => { e.preventDefault(); mobileVertical = sign; el.classList.add('active'); };
+            const release = () => { mobileVertical = 0; el.classList.remove('active'); };
+            el.addEventListener('touchstart', press, { passive: false });
+            el.addEventListener('touchend', release);
+            el.addEventListener('touchcancel', release);
+            el.addEventListener('touchleave', release);
+            // pointer events so the controls also work in DevTools mobile mode
+            el.addEventListener('pointerdown', press);
+            el.addEventListener('pointerup', release);
+            el.addEventListener('pointercancel', release);
+            el.addEventListener('pointerleave', release);
+        };
+        holdHandler(mobileUI.upBtn, +1);
+        holdHandler(mobileUI.downBtn, -1);
+    }
+
+    // Move joystick thumb to reflect (move.x, move.y), capped to base radius.
+    // Also flip the base into "sprint" state at the rim.
+    const JOY_RADIUS = 38; // px, slightly under the base's 110px diameter / 2
+    const updateJoystickThumb = () => {
+        if (!mobileUI) return;
+        const tx = move.x * JOY_RADIUS;
+        const ty = move.y * JOY_RADIUS;
+        mobileUI.joyThumb.style.transform = `translate(${tx}px, ${ty}px)`;
+        const sprinting = Math.hypot(move.x, move.y) > SPRINT_THRESHOLD;
+        mobileUI.joyBase.classList.toggle('sprint', sprinting);
+        mobileUI.joyThumb.classList.toggle('sprint', sprinting);
+    };
 
     const onTouchStart = (e) => {
+        // Don't preventDefault on chip taps (they handle themselves).
+        if (e.target && e.target.classList && e.target.classList.contains('tour-vert-chip')) return;
         e.preventDefault();
         const w = window.innerWidth;
         for (const t of e.changedTouches) {
@@ -118,6 +188,7 @@ export async function start({ canvas, listing, hotspotsOn }) {
                 move.active = true; move.id = t.identifier;
                 move.baseX = t.clientX; move.baseY = t.clientY;
                 move.x = 0; move.y = 0;
+                updateJoystickThumb();
             } else if (!look.active) {
                 look.active = true; look.id = t.identifier;
                 look.lastX = t.clientX; look.lastY = t.clientY;
@@ -125,6 +196,7 @@ export async function start({ canvas, listing, hotspotsOn }) {
         }
     };
     const onTouchMove = (e) => {
+        if (e.target && e.target.classList && e.target.classList.contains('tour-vert-chip')) return;
         e.preventDefault();
         for (const t of e.changedTouches) {
             if (t.identifier === move.id) {
@@ -134,10 +206,11 @@ export async function start({ canvas, listing, hotspotsOn }) {
                 const a = Math.atan2(dy, dx);
                 move.x = (Math.cos(a) * r) / 40;
                 move.y = (Math.sin(a) * r) / 40;
+                updateJoystickThumb();
             } else if (t.identifier === look.id) {
                 cam.yaw -= (t.clientX - look.lastX) * 0.25;
                 cam.pitch -= (t.clientY - look.lastY) * 0.25;
-                cam.pitch = Math.max(-89, Math.min(89, cam.pitch));
+                cam.pitch = Math.max(-80, Math.min(80, cam.pitch));   // tighter on mobile
                 look.lastX = t.clientX; look.lastY = t.clientY;
             }
         }
@@ -147,6 +220,7 @@ export async function start({ canvas, listing, hotspotsOn }) {
             if (t.identifier === move.id) {
                 move.active = false; move.id = null;
                 move.x = 0; move.y = 0;
+                updateJoystickThumb();
             } else if (t.identifier === look.id) {
                 look.active = false; look.id = null;
             }
@@ -177,11 +251,23 @@ export async function start({ canvas, listing, hotspotsOn }) {
 
         mx += move.x;
         my -= move.y;
+        mUp += mobileVertical;
 
         const len = Math.hypot(mx, my);
         if (len > 1) { mx /= len; my /= len; }
 
-        const speed = cam.speed;
+        // Smooth sprint multiplier. Engages once the joystick crosses
+        // SPRINT_THRESHOLD; ramps in/out over ~250ms via lerp(0.18 per frame).
+        const stickMag = Math.hypot(move.x, move.y);
+        const targetMul = stickMag > SPRINT_THRESHOLD ? 2.5 : 1.0;
+        const prevMul = mobileSprintMul;
+        mobileSprintMul += (targetMul - mobileSprintMul) * 0.18;
+        // Subtle haptic the moment sprint engages
+        if (prevMul < 1.6 && mobileSprintMul >= 1.6 && navigator.vibrate) {
+            try { navigator.vibrate(12); } catch (_) {}
+        }
+
+        const speed = cam.speed * mobileSprintMul;
         _delta.set(
             (_right.x * mx + _fwd.x * my) * speed * dt,
             mUp * speed * dt,
@@ -242,6 +328,7 @@ export async function start({ canvas, listing, hotspotsOn }) {
                     canvas.removeEventListener('touchmove', onTouchMove);
                     canvas.removeEventListener('touchend', onTouchEnd);
                     canvas.removeEventListener('touchcancel', onTouchEnd);
+                    if (mobileUI?.root?.parentElement) mobileUI.root.parentElement.removeChild(mobileUI.root);
                 }
                 hsLayer.destroy();
             } catch (err) {

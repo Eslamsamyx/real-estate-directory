@@ -147,6 +147,71 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .cfg-swatch.on { border-color: var(--accent); }
 .cfg-swatch-label { position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 6px; font-size: 9px; font-weight: 600; letter-spacing: 0.04em; color: rgba(255,255,255,0.95); background: linear-gradient(180deg, transparent, rgba(0,0,0,0.6)); }
 
+/* ---------- Mobile motion controls (joystick + ▲▼ chips) ---------- */
+.tour-mobile-controls {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    z-index: 12;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+.tour-joy-base {
+    position: absolute;
+    bottom: 28px; left: 28px;
+    width: 110px; height: 110px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.28);
+    background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05), rgba(15,18,26,0.45));
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.35);
+    transition: border-color 220ms, box-shadow 220ms;
+}
+.tour-joy-base.sprint {
+    border-color: rgba(255, 56, 92, 0.85);
+    box-shadow: 0 0 0 2px rgba(255, 56, 92, 0.18), 0 8px 22px rgba(0,0,0,0.35);
+}
+.tour-joy-thumb {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.92);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.22);
+    will-change: transform;
+    transition: transform 60ms linear, background 200ms;
+    pointer-events: none;
+}
+.tour-joy-thumb.sprint { background: var(--accent); }
+.tour-vert-chip {
+    position: absolute;
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.28);
+    background: rgba(15,18,26,0.45);
+    color: rgba(255,255,255,0.95);
+    font-size: 22px; font-weight: 600;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    pointer-events: auto;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.32);
+    transition: background 160ms, transform 100ms, border-color 160ms;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+}
+.tour-vert-chip.up { bottom: 110px; right: 28px; }
+.tour-vert-chip.down { bottom: 28px; right: 28px; }
+.tour-vert-chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    transform: scale(0.94);
+}
+
+/* The on-screen controls are gated by the JS — they're only created on
+   touch devices (or when `?touch=1` is passed for design QA on desktop). */
+
 /* ---------- Hotspots overlay ---------- */
 .hotspots-layer .hotspot { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; }
 .hs-dot { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: white; border: 2px solid white; font-weight: 700; font-size: 13px; cursor: pointer; box-shadow: var(--shadow-md); transition: transform 120ms; }
