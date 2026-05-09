@@ -49,16 +49,21 @@ export async function start({ canvas, listing, hotspotsOn }) {
         isLocked: false
     };
 
+    // Pre-allocated scratch Vec3s reused every frame (no per-frame GC churn)
+    const _fwd = new pc.Vec3();
+    const _right = new pc.Vec3();
+    const _delta = new pc.Vec3();
+
     const applyCamera = () => {
         const yawR = cam.yaw * pc.math.DEG_TO_RAD;
         const pitchR = cam.pitch * pc.math.DEG_TO_RAD;
-        const fwd = new pc.Vec3(
+        _fwd.set(
             -Math.sin(yawR) * Math.cos(pitchR),
             Math.sin(pitchR),
             -Math.cos(yawR) * Math.cos(pitchR)
         );
         camera.setPosition(cam.pos);
-        camera.lookAt(cam.pos.x + fwd.x, cam.pos.y + fwd.y, cam.pos.z + fwd.z);
+        camera.lookAt(cam.pos.x + _fwd.x, cam.pos.y + _fwd.y, cam.pos.z + _fwd.z);
     };
     applyCamera();
 
@@ -157,8 +162,8 @@ export async function start({ canvas, listing, hotspotsOn }) {
     // Update loop
     const updateHandler = (dt) => {
         const yawR = cam.yaw * pc.math.DEG_TO_RAD;
-        const fwd = new pc.Vec3(-Math.sin(yawR), 0, -Math.cos(yawR));
-        const right = new pc.Vec3(Math.cos(yawR), 0, -Math.sin(yawR));
+        _fwd.set(-Math.sin(yawR), 0, -Math.cos(yawR));
+        _right.set(Math.cos(yawR), 0, -Math.sin(yawR));
 
         let mx = 0, my = 0, mUp = 0;
         if (keys.has('KeyW') || keys.has('ArrowUp')) my += 1;
@@ -177,11 +182,12 @@ export async function start({ canvas, listing, hotspotsOn }) {
         if (len > 1) { mx /= len; my /= len; }
 
         const speed = cam.speed;
-        const delta = new pc.Vec3();
-        delta.x = (right.x * mx + fwd.x * my) * speed * dt;
-        delta.y = mUp * speed * dt;
-        delta.z = (right.z * mx + fwd.z * my) * speed * dt;
-        cam.pos.add(delta);
+        _delta.set(
+            (_right.x * mx + _fwd.x * my) * speed * dt,
+            mUp * speed * dt,
+            (_right.z * mx + _fwd.z * my) * speed * dt
+        );
+        cam.pos.add(_delta);
 
         applyCamera();
     };
