@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Listing · Domus</title>
-    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./style.css?v=3" />
     <link rel="stylesheet" href="./vendor/leaflet.css" />
     <script src="./vendor/leaflet.js" defer></script>
     <style>
@@ -159,7 +159,7 @@
             if (l.tour3d) {
                 const cta = el('button', { cls: 'tour-hero-cta', text: '★ View 3D tour', attrs: { id: 'tour-cta', type: 'button' } });
                 cta.addEventListener('click', async () => {
-                    const { openTour } = await import('./lib/tour/modal.js');
+                    const { openTour } = await import('./lib/tour/modal.js?v=3');
                     await openTour(l);
                 });
                 content.appendChild(cta);

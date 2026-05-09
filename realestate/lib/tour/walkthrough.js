@@ -368,14 +368,14 @@ export async function start({ canvas, listing, hotspotsOn }) {
     }
 
     // Hotspots layer — splat is rotated 180° on X, flip y/z to match
-    const { HOTSPOTS } = await import('../../data/hotspots.js');
-    const { createHotspotsLayer } = await import('./hotspots.js');
+    const { HOTSPOTS } = await import('../../data/hotspots.js?v=3');
+    const { createHotspotsLayer } = await import('./hotspots.js?v=3');
     const flipped = HOTSPOTS.map(h => ({ ...h, world: [h.world[0], -h.world[1], -h.world[2]] }));
     const hsLayer = createHotspotsLayer({ canvas, camera, hotspots: flipped, enabled: hotspotsOn });
 
     // Mini-map / compass overlay. Uses the gsplat AABB for footprint bounds
     // and the camera state for the heading cone. Tap to teleport.
-    const { createMinimap } = await import('./minimap.js');
+    const { createMinimap } = await import('./minimap.js?v=3');
     const splatEntity = app.root.findByName('apartment');
     const minimap = createMinimap({
         host: canvas.closest('.tour-modal') || canvas.parentElement,

@@ -20,7 +20,7 @@ let modalOpen = false;
 
 const TAB_MODULES = {
     dollhouse: () => import('./dollhouse.js'),
-    walkthrough: () => import('./walkthrough.js'),
+    walkthrough: () => import('./walkthrough.js?v=3'),
     configure: () => import('./configurator.js')
 };
 
@@ -33,6 +33,10 @@ const TAB_LABELS = {
 export async function openTour(_listing) {
     if (modal) return;
     modalOpen = true;
+    // Defensive cleanup: if a previously cached walkthrough.js bundle left
+    // any old up/down chips or stale mobile-controls roots in the DOM, scrub
+    // them before the new modal mounts.
+    document.querySelectorAll('.tour-vert-chip, .tour-mobile-controls').forEach(n => n.remove());
     listing = _listing;
     currentTab = 'dollhouse';
     hotspotsOn = false;
