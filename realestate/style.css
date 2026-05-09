@@ -1,0 +1,89 @@
+:root {
+    --bg: #ffffff; --surface: #ffffff; --surface-2: #fafafa;
+    --text: #1a2540; --text-2: #5a6275; --text-muted: #8a93a6;
+    --accent: #ff385c; --accent-2: #e0314f;
+    --border: #e5e6e8; --border-strong: #d4d6da;
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.04);
+    --shadow-md: 0 6px 24px rgba(0,0,0,0.08);
+    --shadow-lg: 0 14px 48px rgba(0,0,0,0.14);
+    --radius-card: 12px; --radius-chip: 999px; --radius-input: 8px;
+    color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; line-height: 1.5; }
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* Top nav */
+.topnav { position: sticky; top: 0; z-index: 30; background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 32px; display: flex; align-items: center; gap: 28px; }
+.topnav .logo { font-weight: 700; font-size: 19px; letter-spacing: -0.01em; color: var(--accent); display: flex; align-items: center; gap: 6px; }
+.topnav .logo::before { content: "◈"; font-size: 22px; }
+.topnav .links { display: flex; gap: 22px; font-size: 14px; font-weight: 500; }
+.topnav .links a { padding: 6px 0; color: var(--text-2); }
+.topnav .links a.active { color: var(--text); border-bottom: 2px solid var(--accent); }
+.topnav .links a[aria-disabled="true"] { color: var(--text-muted); cursor: not-allowed; }
+.topnav .right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+.topnav .heart-link { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius-chip); font-weight: 500; font-size: 13px; background: transparent; border: 1px solid var(--border); transition: border-color 160ms, background 160ms; }
+.topnav .heart-link:hover { background: var(--surface-2); border-color: var(--border-strong); }
+.topnav .heart-link .count { color: var(--accent); font-weight: 600; }
+.topnav .account { width: 38px; height: 38px; border-radius: 50%; background: var(--surface-2); border: 1px solid var(--border); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; color: var(--text-2); }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; padding: 12px 22px; border-radius: var(--radius-chip); font-weight: 600; font-size: 14px; border: 1px solid transparent; cursor: pointer; transition: background 160ms, transform 80ms; }
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { background: var(--accent-2); }
+.btn-primary:active { transform: scale(0.98); }
+.btn-ghost { background: transparent; border-color: var(--border-strong); color: var(--text); }
+.btn-ghost:hover { background: var(--surface-2); }
+
+/* Chips */
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-chip); background: var(--surface); font-size: 13px; font-weight: 500; color: var(--text); cursor: pointer; transition: background 140ms, border-color 140ms; user-select: none; }
+.chip:hover { background: var(--surface-2); }
+.chip.active { background: var(--text); color: white; border-color: var(--text); }
+
+/* Listing card */
+.lcard { display: block; cursor: pointer; color: inherit; position: relative; transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.lcard:hover { transform: translateY(-2px); }
+.lcard .photo { aspect-ratio: 16/11; border-radius: var(--radius-card); overflow: hidden; position: relative; background: var(--surface-2); }
+.lcard .photo .gradient { width: 100%; height: 100%; }
+.lcard .heart { position: absolute; top: 12px; right: 12px; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.92); border: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 18px; color: var(--text-2); backdrop-filter: blur(6px); transition: transform 120ms, color 160ms; }
+.lcard .heart:hover { transform: scale(1.08); }
+.lcard .heart.on { color: var(--accent); }
+.lcard .badge3d { position: absolute; top: 12px; left: 12px; padding: 5px 10px; border-radius: var(--radius-chip); background: rgba(255,255,255,0.95); font-size: 11px; font-weight: 600; color: var(--text); letter-spacing: 0.05em; backdrop-filter: blur(6px); display: inline-flex; align-items: center; gap: 4px; }
+.lcard .badge3d::before { content: "★"; color: var(--accent); }
+.lcard .meta { padding: 12px 4px 0; }
+.lcard .title-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.lcard .title { font-weight: 600; font-size: 15px; }
+.lcard .price { font-weight: 600; font-size: 15px; }
+.lcard .addr { color: var(--text-2); font-size: 13.5px; margin-top: 2px; }
+.lcard .specs { color: var(--text-2); font-size: 13.5px; margin-top: 4px; display: flex; gap: 4px; align-items: center; }
+
+/* Section heading */
+.section-h { display: flex; align-items: baseline; justify-content: space-between; margin: 36px 0 16px; }
+.section-h h2 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+.section-h .meta { color: var(--text-2); font-size: 14px; }
+
+/* Layout helpers */
+.container { max-width: 1320px; margin: 0 auto; padding: 0 32px; }
+.container-narrow { max-width: 880px; margin: 0 auto; padding: 0 32px; }
+.grid-listings { display: grid; gap: 28px 24px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.spacer { height: 48px; }
+
+/* Footer */
+.foot { border-top: 1px solid var(--border); padding: 36px 32px; margin-top: 80px; color: var(--text-muted); font-size: 13px; display: flex; gap: 22px; justify-content: space-between; flex-wrap: wrap; }
+.foot a { color: var(--text-2); }
+.foot a:hover { color: var(--text); }
+
+/* Empty state */
+.empty { text-align: center; padding: 80px 24px; color: var(--text-2); }
+.empty h3 { color: var(--text); font-size: 20px; margin: 0 0 8px; font-weight: 600; }
+.empty p { margin: 0 auto 22px; max-width: 420px; }
+
+/* Mobile */
+@media (max-width: 720px) {
+    .topnav { padding: 12px 16px; gap: 12px; }
+    .topnav .links { display: none; }
+    .container, .container-narrow { padding: 0 16px; }
+    .grid-listings { gap: 22px 16px; grid-template-columns: 1fr; }
+}
