@@ -97,16 +97,41 @@
             document.title = l.title + ' · Domus';
             pushRecent(l.id);
 
-            // 1. Photo grid (one large + 4 small)
+            // 1. Photo grid (one large + 4 small). Big tile gets the real photo
+            // when available; smaller tiles show gradient with brightness variation.
             const grid = el('div', { cls: 'photo-grid' });
             const baseColor = l.heroColor || 'linear-gradient(135deg, #e0e0e0, #c0c0c0)';
             const steps = [1, 0.92, 1.06, 0.86, 1.12];
-            for (const s of steps) {
+            steps.forEach((s, idx) => {
                 const tile = el('div');
                 tile.style.background = baseColor;
                 tile.style.filter = 'brightness(' + s + ')';
+                if (idx === 0) {
+                    // Hero tile — overlay the property photo if it exists.
+                    tile.style.position = 'relative';
+                    tile.style.overflow = 'hidden';
+                    tile.style.filter = 'none';
+                    const img = el('img', {
+                        attrs: {
+                            src: '/realestate/photos/' + l.id + '.png',
+                            alt: l.title,
+                            loading: 'eager',
+                            decoding: 'async'
+                        }
+                    });
+                    Object.assign(img.style, {
+                        position: 'absolute', inset: '0',
+                        width: '100%', height: '100%',
+                        objectFit: 'cover',
+                        opacity: '0',
+                        transition: 'opacity 320ms ease'
+                    });
+                    img.addEventListener('load', () => { img.style.opacity = '1'; });
+                    img.addEventListener('error', () => img.remove());
+                    tile.appendChild(img);
+                }
                 grid.appendChild(tile);
-            }
+            });
             content.appendChild(grid);
 
             // 2. Meta row

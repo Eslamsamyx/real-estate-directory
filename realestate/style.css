@@ -46,7 +46,16 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .lcard { display: block; cursor: pointer; color: inherit; position: relative; transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
 .lcard:hover { transform: translateY(-2px); }
 .lcard .photo { aspect-ratio: 16/11; border-radius: var(--radius-card); overflow: hidden; position: relative; background: var(--surface-2); }
-.lcard .photo .gradient { width: 100%; height: 100%; }
+.lcard .photo .gradient { position: absolute; inset: 0; width: 100%; height: 100%; }
+.lcard .photo .photo-img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 320ms ease;
+    pointer-events: none;
+}
+.lcard .photo .photo-img.loaded { opacity: 1; }
 .lcard .heart { position: absolute; top: 12px; right: 12px; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.92); border: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 18px; color: var(--text-2); backdrop-filter: blur(6px); transition: transform 120ms, color 160ms; }
 .lcard .heart:hover { transform: scale(1.08); }
 .lcard .heart.on { color: var(--accent); }

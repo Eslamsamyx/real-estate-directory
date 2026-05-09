@@ -8,6 +8,20 @@ export function buildCard(listing) {
     const photo = el('div', { cls: 'photo' });
     photo.appendChild(el('div', { cls: 'gradient', style: { background: listing.heroColor } }));
 
+    // Real photo overlay — fades in on load, removed on 404 so the gradient shows through.
+    const img = el('img', {
+        cls: 'photo-img',
+        attrs: {
+            src: '/realestate/photos/' + listing.id + '.png',
+            alt: listing.title,
+            loading: 'lazy',
+            decoding: 'async'
+        }
+    });
+    img.addEventListener('load', () => img.classList.add('loaded'));
+    img.addEventListener('error', () => img.remove());
+    photo.appendChild(img);
+
     if (listing.tour3d) photo.appendChild(el('span', { cls: 'badge3d', text: '3D Tour' }));
 
     const heart = el('button', {
