@@ -1,0 +1,1 @@
+../../demo/vendor/playcanvas.mjs

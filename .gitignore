@@ -1,0 +1,16 @@
+# Engine clone — we don't track upstream source
+engine/
+
+# Brainstorm session artifacts
+.superpowers/
+
+# Playwright MCP screenshots saved at root
+*.png
+!realestate/**/*.png
+!demo/thumbs/*.png
+
+# Demo vendor build (3.5 MB, regeneratable)
+demo/vendor/
+
+# OS noise
+.DS_Store
