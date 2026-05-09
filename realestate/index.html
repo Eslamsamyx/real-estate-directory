@@ -36,7 +36,9 @@
         .map-pin { background: white; color: var(--text); font-weight: 700; font-size: 13px; padding: 6px 10px; border-radius: var(--radius-chip); border: 1px solid var(--border); box-shadow: var(--shadow-md); white-space: nowrap; cursor: pointer; transition: transform 120ms; }
         .map-pin:hover { transform: scale(1.08); z-index: 1000; }
         .map-pin.has-tour { background: var(--accent); color: white; border-color: var(--accent); }
-        .map-pin.highlight { transform: scale(1.15); z-index: 1001; }
+        .leaflet-marker-icon.highlight .map-pin,
+        .map-pin.highlight { transform: scale(1.18); z-index: 1001; box-shadow: 0 0 0 3px var(--accent), var(--shadow-md); }
+        .leaflet-marker-icon.highlight { z-index: 1001 !important; }
         @media (max-width: 880px) { .index-content.split { grid-template-columns: 1fr; } .index-content.split .map-pane { display: none; } }
     </style>
 </head>
