@@ -112,7 +112,19 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .tour-spin { width: 28px; height: 28px; border: 2px solid rgba(255,255,255,0.12); border-top-color: var(--accent); border-radius: 50%; animation: tour-spin 0.85s linear infinite; }
 .tour-splash-label { font-size: 10.5px; letter-spacing: 0.4em; color: rgba(255,255,255,0.55); text-transform: uppercase; }
 @keyframes tour-spin { to { transform: rotate(360deg); } }
-@media (max-width: 720px) { .tour-modal { grid-template-rows: 56px 1fr auto; grid-template-columns: 1fr; grid-template-areas: "head" "stage" "aside"; } .tour-aside { max-height: 40vh; } .tour-tabs { font-size: 12px; } }
+@media (max-width: 720px) {
+    .tour-modal { grid-template-rows: auto 1fr auto; grid-template-columns: 1fr; grid-template-areas: "head" "stage" "aside"; }
+    .tour-head { flex-wrap: wrap; gap: 8px 12px; padding: 8px 12px; }
+    .tour-title { min-width: 0; flex: 1 1 auto; }
+    .tour-listing-title { font-size: 13px; }
+    .tour-listing-sub { font-size: 11px; }
+    .tour-tabs { order: 3; flex: 1 0 100%; margin: 4px 0 0; justify-content: center; padding: 3px; }
+    .tour-tab { padding: 6px 12px; font-size: 12px; }
+    .tour-actions { order: 2; flex: 0 0 auto; gap: 6px; margin-left: auto; }
+    .tour-btn { padding: 6px 10px; font-size: 11px; }
+    .tour-btn.close { padding: 4px 10px; font-size: 16px; }
+    .tour-aside { max-height: 40vh; }
+}
 
 /* ---------- Configurator side panel ---------- */
 .cfg-head { padding: 22px 22px 4px; border-bottom: 1px solid rgba(255,255,255,0.08); }
