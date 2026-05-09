@@ -207,6 +207,39 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
    walkthrough.js still creates them. */
 .tour-vert-chip { display: none !important; }
 
+/* ---------- Mini-map / compass ---------- */
+.tour-minimap {
+    position: absolute;
+    top: calc(72px + env(safe-area-inset-top, 0px));
+    right: calc(16px + env(safe-area-inset-right, 0px));
+    width: 132px; height: 132px;
+    border-radius: 14px;
+    background: rgba(15,18,26,0.55);
+    border: 1px solid rgba(255,255,255,0.18);
+    box-shadow: 0 8px 22px rgba(0,0,0,0.35);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    overflow: hidden;
+    z-index: 13;
+    pointer-events: auto;
+    touch-action: none;
+}
+.tour-minimap canvas { display: block; }
+.tour-minimap-n {
+    position: absolute;
+    top: 4px; left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255,255,255,0.85);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    pointer-events: none;
+}
+@media (max-width: 540px) {
+    .tour-minimap { top: calc(64px + env(safe-area-inset-top, 0px)); }
+}
+
 /* The on-screen controls are gated by the JS — they're only created on
    touch devices (or when `?touch=1` is passed for design QA on desktop). */
 

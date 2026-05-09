@@ -139,6 +139,9 @@ export async function start({ canvas, listing, hotspotsOn }) {
     // Look stick mirrors move stick: x/y in [-1,1], baseX/baseY = touch-start
     // anchor. Drives camera angular velocity in the update loop.
     const look = { active: false, id: null, x: 0, y: 0, baseX: 0, baseY: 0 };
+    // Free-drag swipe-look: any right-half touch that doesn't land on the
+    // joystick rotates the camera by per-move delta (like a mouse-look swipe).
+    const swipe = { active: false, id: null, lastX: 0, lastY: 0 };
     let mobileVertical = 0;       // unused at runtime; reserved for future Z-axis chip
     let mobileSprintMul = 1.0;    // 1.0 normal, ramps to 2.5 at edge of joystick
     const SPRINT_THRESHOLD = 0.85; // |move| at which sprint engages
@@ -193,23 +196,49 @@ export async function start({ canvas, listing, hotspotsOn }) {
         mobileUI.lookThumb.style.transform = `translate(${tx}px, ${ty}px)`;
     };
 
+    // Hit-test a touch against the look-joystick base (with a small padding so
+    // it's still grabbable near the rim). When false, the touch is treated as
+    // free-drag swipe-look on the canvas.
+    const isOnLookStick = (clientX, clientY) => {
+        if (!mobileUI?.lookBase) return false;
+        const r = mobileUI.lookBase.getBoundingClientRect();
+        const pad = 18;
+        return clientX >= r.left - pad && clientX <= r.right + pad &&
+               clientY >= r.top - pad  && clientY <= r.bottom + pad;
+    };
+    const isOnMoveStick = (clientX, clientY) => {
+        if (!mobileUI?.joyBase) return false;
+        const r = mobileUI.joyBase.getBoundingClientRect();
+        const pad = 18;
+        return clientX >= r.left - pad && clientX <= r.right + pad &&
+               clientY >= r.top - pad  && clientY <= r.bottom + pad;
+    };
+
     const onTouchStart = (e) => {
         e.preventDefault();
         const w = window.innerWidth;
         for (const t of e.changedTouches) {
-            if (t.clientX < w * 0.5 && !move.active) {
+            // Move stick wins on the left half OR if finger lands on its base.
+            if (!move.active && (isOnMoveStick(t.clientX, t.clientY) || t.clientX < w * 0.5)) {
                 move.active = true; move.id = t.identifier;
                 move.baseX = t.clientX; move.baseY = t.clientY;
                 move.x = 0; move.y = 0;
                 updateJoystickThumb();
-            } else if (!look.active) {
+            } else if (!look.active && isOnLookStick(t.clientX, t.clientY)) {
+                // Look-stick mode: anchored joystick, drives angular velocity.
                 look.active = true; look.id = t.identifier;
                 look.baseX = t.clientX; look.baseY = t.clientY;
                 look.x = 0; look.y = 0;
                 updateLookThumb();
+            } else if (!swipe.active) {
+                // Free-drag swipe-look on the rest of the canvas. Per-move
+                // delta rotates camera (yaw/pitch in degrees per pixel).
+                swipe.active = true; swipe.id = t.identifier;
+                swipe.lastX = t.clientX; swipe.lastY = t.clientY;
             }
         }
     };
+    const SWIPE_LOOK_SENS = 0.22; // deg per pixel — comparable to Street View.
     const onTouchMove = (e) => {
         e.preventDefault();
         for (const t of e.changedTouches) {
@@ -229,6 +258,11 @@ export async function start({ canvas, listing, hotspotsOn }) {
                 look.x = (Math.cos(a) * r) / 40;
                 look.y = (Math.sin(a) * r) / 40;
                 updateLookThumb();
+            } else if (t.identifier === swipe.id) {
+                cam.yaw   -= (t.clientX - swipe.lastX) * SWIPE_LOOK_SENS;
+                cam.pitch -= (t.clientY - swipe.lastY) * SWIPE_LOOK_SENS;
+                cam.pitch = Math.max(-80, Math.min(80, cam.pitch));
+                swipe.lastX = t.clientX; swipe.lastY = t.clientY;
             }
         }
     };
@@ -242,6 +276,8 @@ export async function start({ canvas, listing, hotspotsOn }) {
                 look.active = false; look.id = null;
                 look.x = 0; look.y = 0;
                 updateLookThumb();
+            } else if (t.identifier === swipe.id) {
+                swipe.active = false; swipe.id = null;
             }
         }
     };
@@ -337,6 +373,27 @@ export async function start({ canvas, listing, hotspotsOn }) {
     const flipped = HOTSPOTS.map(h => ({ ...h, world: [h.world[0], -h.world[1], -h.world[2]] }));
     const hsLayer = createHotspotsLayer({ canvas, camera, hotspots: flipped, enabled: hotspotsOn });
 
+    // Mini-map / compass overlay. Uses the gsplat AABB for footprint bounds
+    // and the camera state for the heading cone. Tap to teleport.
+    const { createMinimap } = await import('./minimap.js');
+    const splatEntity = app.root.findByName('apartment');
+    const minimap = createMinimap({
+        host: canvas.closest('.tour-modal') || canvas.parentElement,
+        hotspots: flipped,
+        getCamera: () => ({ x: cam.pos.x, z: cam.pos.z, yaw: cam.yaw }),
+        getBounds: () => {
+            const aabb = splatEntity?.gsplat?.instance?.meshInstance?.aabb;
+            if (!aabb) return null;
+            return {
+                minX: aabb.center.x - aabb.halfExtents.x,
+                maxX: aabb.center.x + aabb.halfExtents.x,
+                minZ: aabb.center.z - aabb.halfExtents.z,
+                maxZ: aabb.center.z + aabb.halfExtents.z
+            };
+        },
+        onTeleport: ({ x, z }) => { cam.pos.x = x; cam.pos.z = z; applyCamera(); }
+    });
+
     app.start();
 
     return {
@@ -359,6 +416,7 @@ export async function start({ canvas, listing, hotspotsOn }) {
                     if (mobileUI?.root?.parentElement) mobileUI.root.parentElement.removeChild(mobileUI.root);
                 }
                 hsLayer.destroy();
+                minimap.destroy();
             } catch (err) {
                 console.warn('[walkthrough] teardown', err);
             } finally {
