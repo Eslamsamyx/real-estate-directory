@@ -18,9 +18,10 @@ export function isFavorite(id) { return getFavorites().includes(id); }
 export function toggleFavorite(id) {
     const list = getFavorites();
     const i = list.indexOf(id);
-    if (i >= 0) list.splice(i, 1); else list.unshift(id);
+    const nowFavorite = i < 0;
+    if (nowFavorite) list.unshift(id); else list.splice(i, 1);
     write('favorites', list);
-    return list.includes(id);
+    return nowFavorite;
 }
 
 export function pushRecent(id) {

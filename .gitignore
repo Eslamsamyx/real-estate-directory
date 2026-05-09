@@ -7,6 +7,7 @@ engine/
 # Playwright MCP screenshots saved at root
 *.png
 !realestate/**/*.png
+!realestate/*.png
 !demo/thumbs/*.png
 
 # Demo vendor build (3.5 MB, regeneratable)

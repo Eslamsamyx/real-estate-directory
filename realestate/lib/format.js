@@ -8,14 +8,30 @@ export function fmtPriceFull(n) {
     if (typeof n !== 'number' || Number.isNaN(n)) return '—';
     return '$' + n.toLocaleString('en-US');
 }
-export function fmtSqft(n) { return Number(n).toLocaleString('en-US') + ' sqft'; }
+export function fmtSqft(n) {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return '—';
+    return v.toLocaleString('en-US') + ' sqft';
+}
+
 export function fmtDaysAgo(d) {
-    if (d <= 0) return 'today';
+    if (typeof d !== 'number' || !Number.isFinite(d) || d < 0) return 'today';
+    if (d === 0) return 'today';
     if (d === 1) return '1 day ago';
     if (d < 30) return d + ' days ago';
     if (d < 60) return '1 month ago';
     return Math.round(d / 30) + ' months ago';
 }
+
 export function fmtMonthly(n) { return '$' + Math.round(n).toLocaleString('en-US') + ' / mo'; }
-export function fmtSpecs(l) { return l.beds + ' bd · ' + l.baths + ' ba · ' + l.sqft.toLocaleString('en-US') + ' sqft'; }
-export function fmtCityState(l) { return l.address.city + ', ' + l.address.state + ' ' + l.address.zip; }
+
+export function fmtSpecs(l) {
+    if (!l) return '—';
+    const sqft = Number.isFinite(Number(l.sqft)) ? Number(l.sqft).toLocaleString('en-US') + ' sqft' : '— sqft';
+    return (l.beds ?? '—') + ' bd · ' + (l.baths ?? '—') + ' ba · ' + sqft;
+}
+
+export function fmtCityState(l) {
+    if (!l?.address) return '—';
+    return (l.address.city || '') + ', ' + (l.address.state || '') + ' ' + (l.address.zip || '');
+}
