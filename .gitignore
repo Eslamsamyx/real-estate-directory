@@ -1,14 +1,34 @@
-# Engine clone — we don't track upstream source
-engine/
+# Engine — track everything except upstream's tests and dev configs that
+# aren't part of platform functionality.
+engine/test/
+engine/.git/
+engine/node_modules/
+engine/dist/
+engine/.cache/
+engine/eslint.config.mjs
+engine/tsconfig.json
+engine/tsconfig.build.json
+engine/typedoc.json
+engine/release.sh
+engine/build.mjs
+engine/rollup.config.mjs
+engine/.eslintrc*
+engine/jsconfig.json
+engine/package-lock.json
+engine/examples/test/
+engine/examples/dist/
+engine/examples/node_modules/
 
-# Brainstorm session artifacts
+# Local brainstorm session artifacts (not part of platform)
 .superpowers/
 
-# Playwright MCP screenshots saved at root
+# Dev-time screenshots dumped at workspace root by Playwright MCP. Real
+# platform screenshots live under realestate/ and demo/thumbs/ and are kept.
 *.png
 !realestate/**/*.png
 !realestate/*.png
 !demo/thumbs/*.png
+!engine/**/*.png
 
 # Playwright MCP runtime artifacts (sessions, traces)
 .playwright-mcp/
