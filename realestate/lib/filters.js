@@ -43,6 +43,7 @@ export function applyMapBbox(listings, bbox) {
 }
 
 function numberOr(v, fallback) {
+    if (v === null || v === undefined || v === '') return fallback;
     const n = Number(v);
     return Number.isFinite(n) ? n : fallback;
 }
