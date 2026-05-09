@@ -39,7 +39,10 @@ export function applyFilters(listings, f) {
 export function applyMapBbox(listings, bbox) {
     if (!bbox) return listings;
     const [s, w, n, e] = bbox;
-    return listings.filter(l => l.lat >= s && l.lat <= n && l.lng >= w && l.lng <= e);
+    return listings.filter(l =>
+        Number.isFinite(l.lat) && Number.isFinite(l.lng) &&
+        l.lat >= s && l.lat <= n && l.lng >= w && l.lng <= e
+    );
 }
 
 function numberOr(v, fallback) {
