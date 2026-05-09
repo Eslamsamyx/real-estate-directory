@@ -10,9 +10,6 @@ engine/
 !realestate/*.png
 !demo/thumbs/*.png
 
-# Demo vendor build (3.5 MB, regeneratable)
-demo/vendor/
-
 # Playwright MCP runtime artifacts (sessions, traces)
 .playwright-mcp/
 
