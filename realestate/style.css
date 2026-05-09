@@ -147,9 +147,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .cfg-swatch.on { border-color: var(--accent); }
 .cfg-swatch-label { position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 6px; font-size: 9px; font-weight: 600; letter-spacing: 0.04em; color: rgba(255,255,255,0.95); background: linear-gradient(180deg, transparent, rgba(0,0,0,0.6)); }
 
-/* ---------- Mobile motion controls (joystick + ▲▼ chips) ---------- */
+/* ---------- Mobile motion controls (dual joysticks) ---------- */
 .tour-mobile-controls {
-    position: absolute; inset: 0;
+    /* LOCAL FIX (iPhone Safari): longhand insets (older iOS Safari trips on
+       `inset: 0`); position:fixed anchors to the viewport instead of the grid
+       cell, sidestepping any iOS layout collapse on the .tour-stage. */
+    position: fixed;
+    top: 0; right: 0; bottom: 0; left: 0;
     pointer-events: none;
     z-index: 12;
     user-select: none;
@@ -165,13 +169,25 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
     left: calc(28px + env(safe-area-inset-left, 0px));
     width: 110px; height: 110px;
     border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.28);
-    background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05), rgba(15,18,26,0.45));
+    /* LOCAL FIX (iPhone Safari): brighter border + solid base so the joystick
+       is visible even when `backdrop-filter` doesn't paint. Blur is now an
+       enhancement layered on top, not the only thing keeping it visible. */
+    border: 2px solid rgba(255,255,255,0.55);
+    background: rgba(15,18,26,0.65);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+    /* LOCAL FIX: own compositing layer + auto pointer events. */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    pointer-events: auto;
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 8px 22px rgba(0,0,0,0.35);
     transition: border-color 220ms, box-shadow 220ms;
+}
+.tour-joy-base.look {
+    /* Mirror the move stick to the right edge for the look joystick. */
+    left: auto;
+    right: calc(28px + env(safe-area-inset-right, 0px));
 }
 .tour-joy-base.sprint {
     border-color: rgba(255, 56, 92, 0.85);
@@ -187,31 +203,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
     pointer-events: none;
 }
 .tour-joy-thumb.sprint { background: var(--accent); }
-.tour-vert-chip {
-    position: absolute;
-    width: 64px; height: 64px;
-    border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.28);
-    background: rgba(15,18,26,0.45);
-    color: rgba(255,255,255,0.95);
-    font-size: 22px; font-weight: 600;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    pointer-events: auto;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.32);
-    transition: background 160ms, transform 100ms, border-color 160ms;
-    display: flex; align-items: center; justify-content: center;
-    line-height: 1;
-}
-.tour-vert-chip.up   { bottom: calc(110px + env(safe-area-inset-bottom, 0px)); right: calc(28px + env(safe-area-inset-right, 0px)); }
-.tour-vert-chip.down { bottom: calc(28px  + env(safe-area-inset-bottom, 0px)); right: calc(28px + env(safe-area-inset-right, 0px)); }
-.tour-vert-chip.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    transform: scale(0.94);
-}
+/* LOCAL FIX: vertical chips removed — force-hide in case any cached older
+   walkthrough.js still creates them. */
+.tour-vert-chip { display: none !important; }
 
 /* The on-screen controls are gated by the JS — they're only created on
    touch devices (or when `?touch=1` is passed for design QA on desktop). */

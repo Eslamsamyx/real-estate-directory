@@ -115,11 +115,10 @@ export async function start({ canvas, listing, hotspotsOn }) {
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('blur', onBlur);
 
-    // Touch joystick: left half = move, right half = look. Joystick base + thumb
-    // and vertical (▲/▼) chips are rendered on-screen when on a touch device so
-    // the controls are discoverable without an instruction modal. Append
-    // `?touch=1` to the URL to force the on-screen controls on desktop too —
-    // useful for design QA and client demos on a laptop.
+    // Dual on-screen joysticks: left half = move, right half = look (camera
+    // angular velocity). Rendered on every touch device so the controls are
+    // discoverable without an instruction modal. Append `?touch=1` to the URL
+    // to force them on desktop too — useful for design QA on a laptop.
     const _forceTouch = new URLSearchParams(location.search).get('touch') === '1';
     const _isTouchUI = isTouch || _forceTouch;
 
@@ -137,8 +136,10 @@ export async function start({ canvas, listing, hotspotsOn }) {
               w: window.innerWidth, h: window.innerHeight });
     } catch (_) {}
     const move = { active: false, id: null, x: 0, y: 0, baseX: 0, baseY: 0 };
-    const look = { active: false, id: null, lastX: 0, lastY: 0 };
-    let mobileVertical = 0;       // -1, 0, or +1 (driven by ▲/▼ chips)
+    // Look stick mirrors move stick: x/y in [-1,1], baseX/baseY = touch-start
+    // anchor. Drives camera angular velocity in the update loop.
+    const look = { active: false, id: null, x: 0, y: 0, baseX: 0, baseY: 0 };
+    let mobileVertical = 0;       // unused at runtime; reserved for future Z-axis chip
     let mobileSprintMul = 1.0;    // 1.0 normal, ramps to 2.5 at edge of joystick
     const SPRINT_THRESHOLD = 0.85; // |move| at which sprint engages
 
@@ -147,49 +148,34 @@ export async function start({ canvas, listing, hotspotsOn }) {
     let mobileUI = null;
     if (_isTouchUI) {
         const stage = canvas.parentElement;
+        // LOCAL FIX (iPhone Safari): append mobileUI to the modal root, not
+        // the stage. The stage has `overflow: hidden` which can clip fixed
+        // descendants on iOS Safari, and switching tabs replaces the canvas.
+        // Putting controls one level higher avoids both.
+        const mobileHost = canvas.closest('.tour-modal') || stage;
         mobileUI = {
             root: document.createElement('div'),
             joyBase: document.createElement('div'),
             joyThumb: document.createElement('div'),
-            upBtn: document.createElement('button'),
-            downBtn: document.createElement('button')
+            lookBase: document.createElement('div'),
+            lookThumb: document.createElement('div')
         };
         mobileUI.root.className = 'tour-mobile-controls';
         mobileUI.joyBase.className = 'tour-joy-base';
         mobileUI.joyThumb.className = 'tour-joy-thumb';
-        mobileUI.upBtn.className = 'tour-vert-chip up';
-        mobileUI.upBtn.type = 'button';
-        mobileUI.upBtn.textContent = '▲';
-        mobileUI.upBtn.setAttribute('aria-label', 'Move up');
-        mobileUI.downBtn.className = 'tour-vert-chip down';
-        mobileUI.downBtn.type = 'button';
-        mobileUI.downBtn.textContent = '▼';
-        mobileUI.downBtn.setAttribute('aria-label', 'Move down');
+        // Right-side stick: same chrome, mirrored to the right edge via the
+        // `.look` modifier in style.css. Drives camera angular velocity.
+        mobileUI.lookBase.className = 'tour-joy-base look';
+        mobileUI.lookThumb.className = 'tour-joy-thumb';
         mobileUI.joyBase.appendChild(mobileUI.joyThumb);
+        mobileUI.lookBase.appendChild(mobileUI.lookThumb);
         mobileUI.root.appendChild(mobileUI.joyBase);
-        mobileUI.root.appendChild(mobileUI.upBtn);
-        mobileUI.root.appendChild(mobileUI.downBtn);
-        stage.appendChild(mobileUI.root);
-
-        const holdHandler = (el, sign) => {
-            const press = (e) => { e.preventDefault(); mobileVertical = sign; el.classList.add('active'); };
-            const release = () => { mobileVertical = 0; el.classList.remove('active'); };
-            el.addEventListener('touchstart', press, { passive: false });
-            el.addEventListener('touchend', release);
-            el.addEventListener('touchcancel', release);
-            el.addEventListener('touchleave', release);
-            // pointer events so the controls also work in DevTools mobile mode
-            el.addEventListener('pointerdown', press);
-            el.addEventListener('pointerup', release);
-            el.addEventListener('pointercancel', release);
-            el.addEventListener('pointerleave', release);
-        };
-        holdHandler(mobileUI.upBtn, +1);
-        holdHandler(mobileUI.downBtn, -1);
+        mobileUI.root.appendChild(mobileUI.lookBase);
+        mobileHost.appendChild(mobileUI.root);
     }
 
-    // Move joystick thumb to reflect (move.x, move.y), capped to base radius.
-    // Also flip the base into "sprint" state at the rim.
+    // Move/look thumbs reflect (x, y) state, capped to base radius.
+    // Move stick also toggles "sprint" at the rim.
     const JOY_RADIUS = 38; // px, slightly under the base's 110px diameter / 2
     const updateJoystickThumb = () => {
         if (!mobileUI) return;
@@ -200,10 +186,14 @@ export async function start({ canvas, listing, hotspotsOn }) {
         mobileUI.joyBase.classList.toggle('sprint', sprinting);
         mobileUI.joyThumb.classList.toggle('sprint', sprinting);
     };
+    const updateLookThumb = () => {
+        if (!mobileUI) return;
+        const tx = look.x * JOY_RADIUS;
+        const ty = look.y * JOY_RADIUS;
+        mobileUI.lookThumb.style.transform = `translate(${tx}px, ${ty}px)`;
+    };
 
     const onTouchStart = (e) => {
-        // Don't preventDefault on chip taps (they handle themselves).
-        if (e.target && e.target.classList && e.target.classList.contains('tour-vert-chip')) return;
         e.preventDefault();
         const w = window.innerWidth;
         for (const t of e.changedTouches) {
@@ -214,12 +204,13 @@ export async function start({ canvas, listing, hotspotsOn }) {
                 updateJoystickThumb();
             } else if (!look.active) {
                 look.active = true; look.id = t.identifier;
-                look.lastX = t.clientX; look.lastY = t.clientY;
+                look.baseX = t.clientX; look.baseY = t.clientY;
+                look.x = 0; look.y = 0;
+                updateLookThumb();
             }
         }
     };
     const onTouchMove = (e) => {
-        if (e.target && e.target.classList && e.target.classList.contains('tour-vert-chip')) return;
         e.preventDefault();
         for (const t of e.changedTouches) {
             if (t.identifier === move.id) {
@@ -231,10 +222,13 @@ export async function start({ canvas, listing, hotspotsOn }) {
                 move.y = (Math.sin(a) * r) / 40;
                 updateJoystickThumb();
             } else if (t.identifier === look.id) {
-                cam.yaw -= (t.clientX - look.lastX) * 0.25;
-                cam.pitch -= (t.clientY - look.lastY) * 0.25;
-                cam.pitch = Math.max(-80, Math.min(80, cam.pitch));   // tighter on mobile
-                look.lastX = t.clientX; look.lastY = t.clientY;
+                const dx = t.clientX - look.baseX;
+                const dy = t.clientY - look.baseY;
+                const r = Math.min(40, Math.hypot(dx, dy));
+                const a = Math.atan2(dy, dx);
+                look.x = (Math.cos(a) * r) / 40;
+                look.y = (Math.sin(a) * r) / 40;
+                updateLookThumb();
             }
         }
     };
@@ -246,6 +240,8 @@ export async function start({ canvas, listing, hotspotsOn }) {
                 updateJoystickThumb();
             } else if (t.identifier === look.id) {
                 look.active = false; look.id = null;
+                look.x = 0; look.y = 0;
+                updateLookThumb();
             }
         }
     };
@@ -271,6 +267,15 @@ export async function start({ canvas, listing, hotspotsOn }) {
         if (keys.has('ShiftLeft') || keys.has('ShiftRight')) mUp -= 1;
         if (keys.has('KeyQ')) cam.yaw += dt * 60;
         if (keys.has('KeyE')) cam.yaw -= dt * 60;
+
+        // Right joystick drives camera angular velocity. Speed at full
+        // deflection is 140°/s yaw, 90°/s pitch — comparable to mainstream
+        // mobile FPS defaults and snappy enough for a tour.
+        if (look.x !== 0 || look.y !== 0) {
+            cam.yaw   -= look.x * 140 * dt;
+            cam.pitch -= look.y * 90  * dt;
+            cam.pitch = Math.max(-80, Math.min(80, cam.pitch));
+        }
 
         mx += move.x;
         my -= move.y;
