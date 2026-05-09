@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Favorites · Domus</title>
+    <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+    <nav class="topnav" id="topnav"></nav>
+    <main class="container">
+        <h1 style="font-size: 30px; font-weight: 700; margin: 32px 0 8px;">Your favorites</h1>
+        <p id="count" style="color: var(--text-2); margin: 0 0 24px;"></p>
+        <div id="content"></div>
+    </main>
+    <div class="spacer"></div>
+    <footer class="foot" id="foot"></footer>
+    <script type="module">
+        import { LISTINGS } from './data/listings.js';
+        import { buildCard } from './lib/card.js';
+        import { mountNav, mountFooter } from './lib/nav.js';
+        import { getFavorites } from './lib/store.js';
+        import { el } from './lib/dom.js';
+
+        mountNav('favorites');
+        mountFooter();
+
+        function render() {
+            const ids = getFavorites();
+            const list = ids.map(id => LISTINGS.find(l => l.id === id)).filter(Boolean);
+            const content = document.getElementById('content');
+            const count = document.getElementById('count');
+            content.replaceChildren();
+            if (list.length === 0) {
+                count.textContent = 'No saved homes yet.';
+                const empty = el('div', { cls: 'empty' });
+                empty.appendChild(el('h3', { text: 'Heart any home to save it' }));
+                empty.appendChild(el('p', { text: 'Saved homes show up here so you can compare them later.' }));
+                empty.appendChild(el('a', { cls: 'btn btn-primary', text: 'Browse listings', attrs: { href: './index.html' } }));
+                content.appendChild(empty);
+                return;
+            }
+            count.textContent = list.length + ' saved ' + (list.length === 1 ? 'home' : 'homes');
+            const grid = el('div', { cls: 'grid-listings' });
+            for (const l of list) grid.appendChild(buildCard(l));
+            content.appendChild(grid);
+        }
+        render();
+        window.addEventListener('favorites-changed', render);
+    </script>
+</body>
+</html>
