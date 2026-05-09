@@ -129,14 +129,23 @@ PROMPTS = {
 }
 
 # ---------------------------------------------------------------------------
-# Models to try, in preference order. Imagen 4 → Imagen 3 → Nano Banana.
-# Nano Banana works on free tier; Imagen typically needs paid.
+# Models to try, in preference order.
+#
+# The Gemini image-generation models are paid-only on AI Studio free tier
+# (their per-minute and per-day quota is literally 0). Imagen requires paid as
+# well. Pollinations.ai's Flux is included as a free, no-key fallback so the
+# demo can ship without a billing account; if a paid key is configured the
+# Gemini/Imagen models are tried first.
 # ---------------------------------------------------------------------------
 MODELS = [
+    ("nano-banana-pro-preview", "gemini"),
+    ("gemini-3-pro-image-preview", "gemini"),
+    ("gemini-3.1-flash-image-preview", "gemini"),
+    ("gemini-2.5-flash-image", "gemini"),
+    ("imagen-4.0-ultra-generate-001", "imagen"),
     ("imagen-4.0-generate-001", "imagen"),
-    ("imagen-3.0-generate-002", "imagen"),
-    ("gemini-2.5-flash-image-preview", "gemini"),
-    ("gemini-2.0-flash-preview-image-generation", "gemini"),
+    ("imagen-4.0-fast-generate-001", "imagen"),
+    ("flux", "pollinations"),
 ]
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -169,6 +178,24 @@ def call_imagen(model: str, prompt: str, api_key: str) -> bytes:
     if not pred or "bytesBase64Encoded" not in pred[0]:
         raise RuntimeError(f"unexpected imagen response: {json.dumps(data)[:300]}")
     return base64.b64decode(pred[0]["bytesBase64Encoded"])
+
+
+def call_pollinations(model: str, prompt: str, _api_key: str) -> bytes:
+    """Call Pollinations.ai (free, no auth). 1024x704 ≈ 16:11 to match cards."""
+    import urllib.parse
+    url = (
+        f"https://image.pollinations.ai/prompt/{urllib.parse.quote(prompt)}"
+        f"?width=1024&height=704&model={model}&seed=42&nologo=true&enhance=true"
+    )
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15.7) AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "image/webp,image/png,image/*;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+    req = urllib.request.Request(url, method="GET", headers=headers)
+    with urllib.request.urlopen(req, timeout=180) as resp:
+        return resp.read()
 
 
 def call_gemini(model: str, prompt: str, api_key: str) -> bytes:
@@ -213,6 +240,8 @@ def generate_one(prompt: str, api_key: str, force_model: str = None) -> tuple[by
         try:
             if kind == "imagen":
                 return call_imagen(model, full_prompt, api_key), model
+            if kind == "pollinations":
+                return call_pollinations(model, full_prompt, api_key), f"pollinations/{model}"
             return call_gemini(model, full_prompt, api_key), model
         except urllib.error.HTTPError as e:
             body_excerpt = e.read().decode("utf-8", errors="replace")[:300]
