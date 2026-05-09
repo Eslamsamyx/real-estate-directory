@@ -1,14 +1,6 @@
 import { fmtPrice, fmtSpecs, fmtCityState } from './format.js';
 import { isFavorite, toggleFavorite } from './store.js';
-
-function el(tag, props) {
-    const e = document.createElement(tag);
-    if (props?.cls) e.className = props.cls;
-    if (props?.text != null) e.textContent = props.text;
-    if (props?.attrs) for (const k in props.attrs) e.setAttribute(k, props.attrs[k]);
-    if (props?.style) for (const k in props.style) e.style[k] = props.style[k];
-    return e;
-}
+import { el } from './dom.js';
 
 export function buildCard(listing) {
     const a = el('a', { cls: 'lcard', attrs: { href: './listing.html?id=' + listing.id } });
