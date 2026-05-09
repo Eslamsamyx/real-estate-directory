@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Domus · Find your home</title>
     <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./vendor/leaflet.css" />
+    <script src="./vendor/leaflet.js" defer></script>
     <style>
         .hero { padding: 56px 0 32px; text-align: center; }
         .hero h1 { font-size: 38px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 12px; }
@@ -21,6 +23,21 @@
         .filters-row .label-tiny { font-size: 11px; letter-spacing: 0.06em; color: var(--text-muted); text-transform: uppercase; margin-right: 6px; }
         .filters-row #price-display { font-size: 13px; font-weight: 600; color: var(--text); min-width: 96px; }
         .filters-row #sort-select { font-family: inherit; padding-right: 28px; }
+        .layout-toggle { display: inline-flex; background: var(--surface-2); border-radius: var(--radius-chip); padding: 4px; gap: 2px; margin-left: auto; }
+        .layout-toggle button { border: 0; background: transparent; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: var(--radius-chip); color: var(--text-2); }
+        .layout-toggle button.active { background: white; color: var(--text); box-shadow: var(--shadow-sm); }
+        .index-content { display: grid; gap: 24px; transition: grid-template-columns 320ms ease; }
+        .index-content.split { grid-template-columns: 1fr 1fr; }
+        .index-content.grid, .index-content.map { grid-template-columns: 1fr; }
+        .index-content.map .grid-pane { display: none; }
+        .index-content.grid .map-pane { display: none; }
+        #map-pane { position: sticky; top: 130px; height: calc(100vh - 150px); border-radius: var(--radius-card); overflow: hidden; border: 1px solid var(--border); background: var(--surface-2); }
+        .index-content.map #map-pane { height: calc(100vh - 200px); }
+        .map-pin { background: white; color: var(--text); font-weight: 700; font-size: 13px; padding: 6px 10px; border-radius: var(--radius-chip); border: 1px solid var(--border); box-shadow: var(--shadow-md); white-space: nowrap; cursor: pointer; transition: transform 120ms; }
+        .map-pin:hover { transform: scale(1.08); z-index: 1000; }
+        .map-pin.has-tour { background: var(--accent); color: white; border-color: var(--accent); }
+        .map-pin.highlight { transform: scale(1.15); z-index: 1001; }
+        @media (max-width: 880px) { .index-content.split { grid-template-columns: 1fr; } .index-content.split .map-pane { display: none; } }
     </style>
 </head>
 <body>
@@ -61,8 +78,20 @@
     <main class="container">
         <div style="display:flex; align-items:center; gap:12px; margin-bottom: 16px;">
             <p class="result-count" id="result-count">12 homes for sale in Austin, TX</p>
+            <div class="layout-toggle" id="layout-toggle">
+                <button data-layout="grid">Grid</button>
+                <button data-layout="split" class="active">Split</button>
+                <button data-layout="map">Map</button>
+            </div>
         </div>
-        <div class="grid-listings" id="grid"></div>
+        <div class="index-content split" id="index-content">
+            <div class="grid-pane">
+                <div class="grid-listings" id="grid"></div>
+            </div>
+            <div class="map-pane">
+                <div id="map-pane"></div>
+            </div>
+        </div>
     </main>
     <div class="spacer"></div>
     <footer class="foot" id="foot"></footer>
@@ -70,11 +99,13 @@
         import { LISTINGS } from './data/listings.js';
         import { buildCard } from './lib/card.js';
         import { mountNav, mountFooter } from './lib/nav.js';
-        import { readFilters, writeFilters, applyFilters } from './lib/filters.js';
+        import { readFilters, writeFilters, applyFilters, applyMapBbox } from './lib/filters.js';
+        import { initMap, updateMarkers, highlightMarker, flyTo } from './lib/map.js';
         import { fmtPrice } from './lib/format.js';
 
         mountNav('index'); mountFooter();
         const filters = readFilters();
+        let bbox = null; let layout = 'split';
 
         const grid = document.getElementById('grid');
         const resultCount = document.getElementById('result-count');
@@ -82,11 +113,23 @@
         const priceDisplay = document.getElementById('price-display');
         const sortSelect = document.getElementById('sort-select');
         const tour3dChip = document.getElementById('tour3d-chip');
+        const layoutToggle = document.getElementById('layout-toggle');
+        const indexContent = document.getElementById('index-content');
+
+        const visibleNow = () => {
+            const f = applyFilters(LISTINGS, filters);
+            return layout === 'grid' ? f : applyMapBbox(f, bbox);
+        };
 
         const render = () => {
-            const visible = applyFilters(LISTINGS, filters);
+            const visible = visibleNow();
             grid.replaceChildren();
-            for (const l of visible) grid.appendChild(buildCard(l));
+            for (const l of visible) {
+                const c = buildCard(l);
+                c.addEventListener('mouseenter', () => highlightMarker(l.id));
+                c.addEventListener('mouseleave', () => highlightMarker(null));
+                grid.appendChild(c);
+            }
             resultCount.textContent = visible.length + ' homes for sale in Austin, TX';
             for (const b of document.querySelectorAll('[data-bedchip]')) b.classList.toggle('active', Number(b.dataset.bedchip) === filters.beds);
             for (const b of document.querySelectorAll('[data-typechip]')) b.classList.toggle('active', b.dataset.typechip === filters.type);
@@ -94,8 +137,17 @@
             priceRange.value = filters.priceMax;
             priceDisplay.textContent = filters.priceMax >= 5_000_000 ? 'Up to $5M' : 'Up to ' + fmtPrice(filters.priceMax);
             sortSelect.value = filters.sort;
+            updateMarkers(applyFilters(LISTINGS, filters), { onPinClick: id => flyTo(id, LISTINGS) });
         };
-        render();
+
+        const start = () => {
+            initMap('map-pane', applyFilters(LISTINGS, filters), {
+                onBoundsChange: (b) => { bbox = b; render(); },
+                onPinClick: (id) => location.href = './listing.html?id=' + id
+            });
+            render();
+        };
+        if (window.L) start(); else window.addEventListener('load', start);
 
         priceRange.addEventListener('input', () => {
             filters.priceMax = Number(priceRange.value);
@@ -106,6 +158,16 @@
         for (const b of document.querySelectorAll('[data-typechip]')) b.addEventListener('click', () => { filters.type = b.dataset.typechip; writeFilters(filters); render(); });
         tour3dChip.addEventListener('click', () => { filters.tour3d = !filters.tour3d; writeFilters(filters); render(); });
         sortSelect.addEventListener('change', () => { filters.sort = sortSelect.value; writeFilters(filters); render(); });
+        layoutToggle.addEventListener('click', (ev) => {
+            const btn = ev.target.closest('[data-layout]');
+            if (!btn) return;
+            for (const b of layoutToggle.querySelectorAll('button')) b.classList.remove('active');
+            btn.classList.add('active');
+            layout = btn.dataset.layout;
+            indexContent.className = 'index-content ' + layout;
+            setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 50);
+            render();
+        });
     </script>
 </body>
 </html>
