@@ -15,6 +15,8 @@ let splash = null;
 let escHandler = null;
 let tabButtons = {};
 let hotspotBtn = null;
+let switchGen = 0;
+let modalOpen = false;
 
 const TAB_MODULES = {
     dollhouse: () => import('./dollhouse.js'),
@@ -30,6 +32,7 @@ const TAB_LABELS = {
 
 export async function openTour(_listing) {
     if (modal) return;
+    modalOpen = true;
     listing = _listing;
     currentTab = 'dollhouse';
     hotspotsOn = false;
@@ -113,6 +116,7 @@ function buildSplash() {
 }
 
 async function switchTab(id) {
+    const myGen = ++switchGen;
     currentTab = id;
     for (const k in tabButtons) {
         tabButtons[k].classList.toggle('active', k === id);
@@ -136,16 +140,27 @@ async function switchTab(id) {
     splash.classList.remove('hidden');
     splash.style.display = '';
 
+    let renderer;
     try {
         const mod = await TAB_MODULES[id]();
         if (!mod || typeof mod.start !== 'function') throw new Error('Module ' + id + ' has no start()');
-        activeRenderer = await mod.start({ canvas, listing, aside, hotspotsOn });
+        renderer = await mod.start({ canvas, listing, aside, hotspotsOn });
     } catch (err) {
         console.error('[tour] tab failed to start', id, err);
-        const labelEl = splash.querySelector('.tour-splash-label');
-        if (labelEl) labelEl.textContent = 'Failed to load — see console';
+        if (myGen === switchGen && modalOpen) {
+            const labelEl = splash.querySelector('.tour-splash-label');
+            if (labelEl) labelEl.textContent = 'Failed to load — see console';
+        }
         return;
     }
+
+    // If a newer switchTab won OR the modal closed during the await, dispose immediately.
+    if (myGen !== switchGen || !modalOpen) {
+        try { renderer?.destroy?.(); } catch (err) { console.warn('[tour] stale renderer destroy', err); }
+        return;
+    }
+
+    activeRenderer = renderer;
 
     // Hide splash
     splash.style.display = 'none';
@@ -153,6 +168,8 @@ async function switchTab(id) {
 
 function closeTour() {
     if (!modal) return;
+    modalOpen = false;
+    switchGen++; // invalidate any in-flight start()
     if (activeRenderer && activeRenderer.destroy) {
         try { activeRenderer.destroy(); } catch (err) { console.error('[tour] destroy error', err); }
     }
