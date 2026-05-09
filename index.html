@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Domus</title>
+    <meta http-equiv="refresh" content="1; url=/realestate/index.html" />
+    <style>
+        :root { color-scheme: light; }
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0;
+            min-height: 100vh;
+            background: #ffffff;
+            color: #1a2540;
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .wrap {
+            text-align: center;
+            padding: 32px;
+            max-width: 480px;
+        }
+        .logo {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-weight: 700; font-size: 32px; letter-spacing: -0.01em;
+            color: #ff385c;
+            margin-bottom: 8px;
+        }
+        .logo::before { content: "◈"; font-size: 36px; }
+        h1 {
+            font-size: 22px; font-weight: 400; letter-spacing: 0.02em;
+            color: #5a6275;
+            margin: 0 0 32px;
+        }
+        .cta {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 14px 28px;
+            background: #ff385c; color: white;
+            border-radius: 999px;
+            font-weight: 600; font-size: 15px;
+            text-decoration: none;
+            transition: background 160ms;
+        }
+        .cta:hover { background: #e0314f; }
+        .small {
+            margin-top: 28px;
+            font-size: 12.5px;
+            color: #8a93a6;
+            letter-spacing: 0.04em;
+        }
+        .small a { color: #5a6275; text-decoration: underline; text-decoration-color: #d4d6da; text-underline-offset: 3px; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="logo">Domus</div>
+        <h1>Find a home that's yours.</h1>
+        <a class="cta" href="/realestate/index.html">Browse listings →</a>
+        <p class="small">Redirecting in a second… or <a href="/realestate/index.html">click here</a>.</p>
+    </div>
+    <script>
+        // Faster than the meta refresh for users with JS — keep both for safety.
+        setTimeout(function () { location.replace('/realestate/index.html'); }, 600);
+    </script>
+</body>
+</html>

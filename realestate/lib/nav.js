@@ -33,12 +33,12 @@ export function mountNav(activePage) {
 export function mountFooter() {
     const target = document.getElementById('foot');
     if (!target) return;
-    const left = el('div', { text: 'Domus · demo built on PlayCanvas · ' + new Date().getFullYear() });
+    const left = el('div', { text: '© ' + new Date().getFullYear() + ' Domus' });
     const right = el('div');
-    right.appendChild(el('a', { text: 'Engine examples', attrs: { href: '/demo/examples.html' } }));
-    right.appendChild(document.createTextNode(' · '));
-    right.appendChild(el('a', { text: 'Open splat tour', attrs: { href: '/demo/walkthrough.html' } }));
-    right.appendChild(document.createTextNode(' · '));
-    right.appendChild(el('a', { text: 'About this demo', attrs: { href: '#' } }));
+    const linkTexts = ['About', 'Privacy', 'Terms', 'Careers'];
+    linkTexts.forEach((label, i) => {
+        if (i > 0) right.appendChild(document.createTextNode(' · '));
+        right.appendChild(el('a', { text: label, attrs: { href: '#' } }));
+    });
     target.replaceChildren(left, right);
 }

@@ -97,8 +97,11 @@
             document.title = l.title + ' · Domus';
             pushRecent(l.id);
 
-            // 1. Photo grid (one large + 4 small). Big tile gets the real photo
-            // when available; smaller tiles show gradient with brightness variation.
+            // 1. Photo grid (one large + 4 small). Each tile gets a real photo
+            // when available, falling back to gradient with brightness variation.
+            // Hero (idx 0) loads /photos/<id>.png, details (idx 1-4) load
+            // /photos/<id>-<idx>.png. Missing files are removed via onerror so
+            // the gradient fallback shows through.
             const grid = el('div', { cls: 'photo-grid' });
             const baseColor = l.heroColor || 'linear-gradient(135deg, #e0e0e0, #c0c0c0)';
             const steps = [1, 0.92, 1.06, 0.86, 1.12];
@@ -106,30 +109,33 @@
                 const tile = el('div');
                 tile.style.background = baseColor;
                 tile.style.filter = 'brightness(' + s + ')';
-                if (idx === 0) {
-                    // Hero tile — overlay the property photo if it exists.
-                    tile.style.position = 'relative';
-                    tile.style.overflow = 'hidden';
+                tile.style.position = 'relative';
+                tile.style.overflow = 'hidden';
+
+                const suffix = idx === 0 ? '' : '-' + idx;
+                const img = el('img', {
+                    attrs: {
+                        src: '/realestate/photos/' + l.id + suffix + '.png',
+                        alt: l.title,
+                        loading: idx === 0 ? 'eager' : 'lazy',
+                        decoding: 'async'
+                    }
+                });
+                Object.assign(img.style, {
+                    position: 'absolute', inset: '0',
+                    width: '100%', height: '100%',
+                    objectFit: 'cover',
+                    opacity: '0',
+                    transition: 'opacity 320ms ease'
+                });
+                img.addEventListener('load', () => {
+                    img.style.opacity = '1';
+                    // When the photo loads, drop the brightness filter so we
+                    // show the real image at full fidelity — no muddy small tiles.
                     tile.style.filter = 'none';
-                    const img = el('img', {
-                        attrs: {
-                            src: '/realestate/photos/' + l.id + '.png',
-                            alt: l.title,
-                            loading: 'eager',
-                            decoding: 'async'
-                        }
-                    });
-                    Object.assign(img.style, {
-                        position: 'absolute', inset: '0',
-                        width: '100%', height: '100%',
-                        objectFit: 'cover',
-                        opacity: '0',
-                        transition: 'opacity 320ms ease'
-                    });
-                    img.addEventListener('load', () => { img.style.opacity = '1'; });
-                    img.addEventListener('error', () => img.remove());
-                    tile.appendChild(img);
-                }
+                });
+                img.addEventListener('error', () => img.remove());
+                tile.appendChild(img);
                 grid.appendChild(tile);
             });
             content.appendChild(grid);
