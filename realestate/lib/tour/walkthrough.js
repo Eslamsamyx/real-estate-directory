@@ -6,7 +6,16 @@ window.pc ||= pc;
 const ENGINE_BASE = '/engine/examples/assets';
 
 export async function start({ canvas, listing, hotspotsOn }) {
-    const isTouch = matchMedia('(pointer: coarse)').matches;
+    // Multi-criteria touch detection. `(pointer: coarse)` alone misses some
+    // configurations: iPads in desktop mode, devices with both touch and a
+    // mouse plugged in, in-app webviews that don't set the media feature, etc.
+    // We OR several signals so the on-screen controls show on any reasonable
+    // touch device.
+    const isTouch =
+        (typeof window !== 'undefined' && 'ontouchstart' in window) ||
+        (navigator.maxTouchPoints || 0) > 0 ||
+        matchMedia('(pointer: coarse)').matches ||
+        matchMedia('(hover: none)').matches;
 
     const app = new pc.Application(canvas, {
         mouse: new pc.Mouse(canvas),
@@ -113,6 +122,20 @@ export async function start({ canvas, listing, hotspotsOn }) {
     // useful for design QA and client demos on a laptop.
     const _forceTouch = new URLSearchParams(location.search).get('touch') === '1';
     const _isTouchUI = isTouch || _forceTouch;
+
+    // Debug breadcrumb so the on-screen controls' presence/absence can be
+    // diagnosed via remote Web Inspector / chrome://inspect on a real device.
+    // Cheap log; no PII.
+    try {
+        // eslint-disable-next-line no-console
+        console.info('[walkthrough] touch detection:',
+            { isTouch, _forceTouch, _isTouchUI,
+              ontouchstart: 'ontouchstart' in window,
+              maxTouchPoints: navigator.maxTouchPoints || 0,
+              pointerCoarse: matchMedia('(pointer: coarse)').matches,
+              hoverNone: matchMedia('(hover: none)').matches,
+              w: window.innerWidth, h: window.innerHeight });
+    } catch (_) {}
     const move = { active: false, id: null, x: 0, y: 0, baseX: 0, baseY: 0 };
     const look = { active: false, id: null, lastX: 0, lastY: 0 };
     let mobileVertical = 0;       // -1, 0, or +1 (driven by ▲/▼ chips)
