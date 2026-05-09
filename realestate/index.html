@@ -64,6 +64,11 @@
             <button class="chip" data-bedchip="3">3+</button>
             <button class="chip" data-bedchip="4">4+</button>
             <span class="divider"></span>
+            <button class="chip" data-bathchip="0">Any baths</button>
+            <button class="chip" data-bathchip="1">1+</button>
+            <button class="chip" data-bathchip="2">2+</button>
+            <button class="chip" data-bathchip="3">3+</button>
+            <span class="divider"></span>
             <button class="chip" data-typechip="any">Any type</button>
             <button class="chip" data-typechip="house">House</button>
             <button class="chip" data-typechip="townhouse">Townhouse</button>
@@ -134,6 +139,7 @@
             }
             resultCount.textContent = visible.length + (visible.length === 1 ? ' home' : ' homes') + ' for sale in Austin, TX';
             for (const b of document.querySelectorAll('[data-bedchip]')) b.classList.toggle('active', Number(b.dataset.bedchip) === filters.beds);
+            for (const b of document.querySelectorAll('[data-bathchip]')) b.classList.toggle('active', Number(b.dataset.bathchip) === filters.baths);
             for (const b of document.querySelectorAll('[data-typechip]')) b.classList.toggle('active', b.dataset.typechip === filters.type);
             tour3dChip.classList.toggle('active', filters.tour3d);
             priceRange.value = filters.priceMax;
@@ -157,6 +163,7 @@
         });
         priceRange.addEventListener('change', () => { writeFilters(filters); render(); });
         for (const b of document.querySelectorAll('[data-bedchip]')) b.addEventListener('click', () => { filters.beds = Number(b.dataset.bedchip); writeFilters(filters); render(); });
+        for (const b of document.querySelectorAll('[data-bathchip]')) b.addEventListener('click', () => { filters.baths = Number(b.dataset.bathchip); writeFilters(filters); render(); });
         for (const b of document.querySelectorAll('[data-typechip]')) b.addEventListener('click', () => { filters.type = b.dataset.typechip; writeFilters(filters); render(); });
         tour3dChip.addEventListener('click', () => { filters.tour3d = !filters.tour3d; writeFilters(filters); render(); });
         sortSelect.addEventListener('change', () => { filters.sort = sortSelect.value; writeFilters(filters); render(); });
